@@ -33,9 +33,42 @@ users = pd.read_csv('ml-users.csv')
 users = users.set_index('user_id')
 #%%
 # Users w/ accuracies below 65% and are not in neighorhoods without sidewalks
-overall_bad_users = ['1353d168-ab49-4474-ae8a-213eb2dafab5', '35872a6c-d171-40d9-8e66-9242b835ea71',
-                     '6809bd6e-605f-4861-bc49-32e52c88c675', '939b6faa-0b57-4160-bcc2-d11fd2b69d9f',
-                      'f5314ef9-3877-438c-ba65-ee2a2bbbf7f5']
+overall_bad_users = ['1353d168-ab49-4474-ae8a-213eb2dafab5', 
+                     '35872a6c-d171-40d9-8e66-9242b835ea71',
+                     '6809bd6e-605f-4861-bc49-32e52c88c675', 
+                     '939b6faa-0b57-4160-bcc2-d11fd2b69d9f',
+                     'f5314ef9-3877-438c-ba65-ee2a2bbbf7f5']
+
+no_sidewalk_region_users = ['54c77d0f-fc8f-4497-84d3-5e336047b17e',
+                            '86d26e9d-010f-4802-88ba-680ae0a8e20d',
+                            '8a471c0f-fa81-4c57-9b65-bd04a92c6a5e',
+                            'bca24c1a-a6b1-4625-ab8e-9ff8693022d7',
+                            'ec15a589-dd14-4513-a43e-8c06e55f4c71']
+
+good_users = ['0e1ae564-6d72-4670-98e4-71369cc5ab26',
+            '2d9009b3-55d5-4aa8-a17a-a7c80afc4d51',
+            '715af4d8-0f17-47c4-99c6-7ef92d94803a',
+            '7b1596af-14d4-4f2b-9e4e-71b1884db836',
+            '87833d72-b357-4e2c-81cd-23f58ff04c59',
+            '9005a64a-fa73-4c84-b08b-b61eece1b9b7',
+            '9b595ba6-529b-4d37-93d7-dd189184e15a',
+            'ac272eb8-3bb3-4260-9960-8e6c463f3867',
+            'af812204-1521-4c42-bf88-4baaaffe3f06',
+            'bb64c416-b0bb-4a5b-b369-00f2a56fea3a',
+            'bf16418a-4c99-4fd6-99c6-7e8b40fbe17b',
+            'c7190807-b56e-40c5-b96e-49dc8368328c']
+
+def user_class(user_id):
+    if user_id in overall_bad_users:
+        return 'bad'
+    elif user_id in no_sidewalk_region_users:
+        return 'region'
+    elif user_id in good_users:
+        return 'good'
+    return 'undefined'
+
+users = users.join(users.apply(lambda x: user_class(x.name), axis=1).rename('class'))
+
 #%%
 point_labels = pd.read_csv('sidewalk-seattle-label_point.csv')
 point_labels.set_index('label_id', inplace=True)
@@ -122,4 +155,3 @@ plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
 plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
 #%%
-    
