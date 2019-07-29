@@ -149,10 +149,11 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     useful_train = train_labels[~pd.isna(train_labels['correct'])]
 
     #%%
-    clf = BalancedBaggingClassifier(random_state=0)
-    features = ['label_type', 'sv_image_x', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng', 'cv_label_type', 'cv_confidence']
+    # clf = BalancedBaggingClassifier(random_state=0)
+    # clf = BalancedRandomForestClassifier(random_state=0)
+    features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
     #%%
-    useful_train = useful_train[~pd.isna(useful_train).any(axis=1)]  # TODO don't eliminate all nans
+    useful_train = useful_train[~pd.isna(useful_train[features]).any(axis=1)]  # TODO don't eliminate all nans
     # def get_proximity_info(label):
     #     try:
     #         distance, middleness = compute_proximity(label.lat, label.lng, cache=True)
@@ -172,7 +173,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     #%%
     # Probabililty correct
-    useful_test = test_labels[~pd.isna(test_labels).any(axis=1)]  # TODO don't eliminate all nans
+    useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)]  # TODO don't eliminate all nans
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
     useful_test.loc[:, 'prob'] = clf.predict_proba(useful_test[features])[:, 1]
 
@@ -189,8 +190,12 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     print(f'{split_num} / 5', end='\r')
 
+
 #%%
-plt.figure()
+plt.figure(figsize=(5, 5))
+plt.xlim((20, 100))
+plt.ylim((20, 100))
+plt.axis('scaled')
 plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
 plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
