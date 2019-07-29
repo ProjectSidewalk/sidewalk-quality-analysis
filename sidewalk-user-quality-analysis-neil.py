@@ -28,6 +28,7 @@ from sklearn import linear_model
 from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import VarianceThreshold
+from new_proximity.intersection_proximity import compute_proximity
 #%%
 users = pd.read_csv('ml-users.csv')
 users = users.set_index('user_id')
@@ -90,6 +91,25 @@ from sklearn.preprocessing import OrdinalEncoder
 label_type_encoder = OrdinalEncoder()
 #%%
 label_correctness['label_type'] = label_type_encoder.fit_transform(label_correctness[['label_type']])
+
+#%% [markdown]
+# # CV Analysis
+cv_predictions = pd.read_csv('summary_user.csv').rename(
+    columns={
+        'Label_id': 'label_id',
+        'Confidence': 'cv_confidence',
+        'CVLabel': 'cv_label'
+    }
+)
+
+cv_predictions.loc[:, 'cv_label_type'] = label_type_encoder.transform(cv_predictions[['cv_label']])
+
+cv_predictions = cv_predictions[['label_id', 'cv_confidence', 'cv_label_type']]
+cv_predictions.set_index('label_id', inplace=True)
+
+#%%
+label_correctness = label_correctness.join(cv_predictions, how='outer')
+
 #%% [markdown]
 # # Classification
 
@@ -106,6 +126,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn import svm
 from sklearn.base import BaseEstimator
 
+# #%%
+# from importlib import reload
+# import new_proximity
+# reload(new_proximity)
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
@@ -126,16 +150,30 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     #%%
     clf = BalancedBaggingClassifier(random_state=0)
-    features = ['label_type', 'sv_image_x', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
+    features = ['label_type', 'sv_image_x', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng', 'cv_label_type', 'cv_confidence']
     #%%
-    useful_train = useful_train[~pd.isna(useful_train).any(axis=1)]
+    useful_train = useful_train[~pd.isna(useful_train).any(axis=1)]  # TODO don't eliminate all nans
+    # def get_proximity_info(label):
+    #     try:
+    #         distance, middleness = compute_proximity(label.lat, label.lng, cache=True)
+    #     except Exception:
+    #         distance = -1
+    #         middleness = -1
+        
+    #     return pd.Series({
+    #         'proximity_distance': distance,
+    #         'proximity_middleness': middleness
+    #     })
+
+    # useful_train = useful_train.join(useful_train.apply(get_proximity_info, axis=1))
 
     #%%
     clf.fit(useful_train[features], useful_train['correct'].astype(int))
 
     #%%
     # Probabililty correct
-    useful_test = test_labels[~pd.isna(test_labels).any(axis=1)]
+    useful_test = test_labels[~pd.isna(test_labels).any(axis=1)]  # TODO don't eliminate all nans
+    # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
     useful_test.loc[:, 'prob'] = clf.predict_proba(useful_test[features])[:, 1]
 
     #%%
@@ -148,6 +186,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
 
     split_num += 1
+
+    print(f'{split_num} / 5', end='\r')
 
 #%%
 plt.figure()
