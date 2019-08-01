@@ -1,0 +1,7 @@
+.ipynb_checkpoints/
+.vscode/
+*.csv
+*.tar.gz
+*.png
+new_proximity
+*.~lock*
