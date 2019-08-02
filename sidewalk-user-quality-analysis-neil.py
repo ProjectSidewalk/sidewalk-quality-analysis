@@ -112,6 +112,8 @@ cv_predictions.set_index('label_id', inplace=True)
 
 #%%
 label_types = ['CurbRamp', 'NoCurbRamp', 'Obstacle', 'SurfaceProblem']
+
+#%%
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
 for i in range(len(label_types)):
     ax = axes[i//2][i%2]
@@ -143,6 +145,56 @@ prob
 #%%
 label_correctness = label_correctness.join(cv_predictions, how='outer')
 
+#%% [markdown]
+# # Population Density
+
+#%%
+from region_stats import RegionStats
+rs = RegionStats('data_seattle.geojson')
+label_correctness = label_correctness.join(
+    label_correctness.apply(lambda x: pd.Series(rs.get_properties(x.lng, x.lat)), axis=1)
+)
+
+#%%
+selection_all = label_correctness[['density', 'correct', 'label_type']]
+selection_all = selection_all[~pd.isna(selection_all).any(axis=1)]
+#%%
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
+fig2, axes2 = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
+
+for i in range(len(label_types)):
+    ax = axes[i//2][i%2]
+    label_encoded = label_type_encoder.transform([[label_types[i]]])[0][0]
+    selection = selection_all[selection_all['label_type'] == label_encoded]
+    ax.set_xlabel('Population density (people/sq. mile)')
+    ax.set_ylabel('count')
+    ax.set_title(label_types[i])
+    nc, bins, _ = ax.hist(selection[selection['correct'] == True]['density'], density=False, bins=20, alpha=0.5, label='correct')
+    ni, _, _ = ax.hist(selection[selection['correct'] == False]['density'], density=False, bins=bins, alpha=0.5, label='incorrect')
+    ax.legend()
+
+    ax2 = axes2[i//2][i%2]
+    ax2.set_xlabel('Population density (people/sq. mile)')
+    ax2.set_ylabel('probability correct')
+    ax2.set_title(label_types[i])
+    density_vals = (bins[:-1] + bins[1:])/2
+    correct_prob = nc / (ni + nc)
+    mask = ~np.isnan(correct_prob)
+    density_vals = density_vals[mask]
+    correct_prob = correct_prob[mask]
+    ax2.scatter(density_vals, correct_prob)
+
+    
+    z = np.polyfit(density_vals, correct_prob, 1)
+    p = np.poly1d(z)
+    ax2.plot(density_vals, p(density_vals), 
+    label=f"R={r2_score(correct_prob, p(density_vals)):.3f}")
+
+    ax2.legend()
+
+
+fig.tight_layout()
+fig2.tight_layout()
 #%% [markdown]
 # # Classification
 
