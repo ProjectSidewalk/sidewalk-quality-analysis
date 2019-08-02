@@ -29,6 +29,9 @@ from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import VarianceThreshold
 from new_proximity.intersection_proximity import compute_proximity
+from sklearn.metrics import r2_score
+import sys
+
 #%%
 users = pd.read_csv('ml-users.csv')
 users = users.set_index('user_id')
@@ -108,6 +111,36 @@ cv_predictions = cv_predictions[['label_id', 'cv_confidence', 'cv_label_type']]
 cv_predictions.set_index('label_id', inplace=True)
 
 #%%
+label_types = ['CurbRamp', 'NoCurbRamp', 'Obstacle', 'SurfaceProblem']
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
+for i in range(len(label_types)):
+    ax = axes[i//2][i%2]
+    label_encoded = label_type_encoder.transform([[label_types[i]]])[0][0]
+    selection = label_correctness[~pd.isna(label_correctness['correct']) & (label_correctness['label_type'] == label_encoded)]
+    ax.set_xlabel('CV Confidence')
+    ax.set_ylabel('relative count')
+    ax.set_title(label_types[i])
+    ax.hist(selection[selection['correct'].astype(bool)]['cv_confidence'], alpha=0.5, label='correct', density=True)
+    ax.hist(selection[~selection['correct'].astype(bool)]['cv_confidence'], alpha=0.5, label='incorrect', density=True)
+    ax.legend()
+
+fig.tight_layout()
+#%%
+prob = np.zeros((4, 4))
+for i in range(len(label_types)):
+    for j in range(len(label_types)):
+        i_encoded = label_type_encoder.transform([[label_types[i]]])[0][0]
+        j_encoded = label_type_encoder.transform([[label_types[j]]])[0][0]
+
+        selection = label_correctness[~pd.isna(label_correctness['correct']) 
+            & (label_correctness['label_type'] == i_encoded)
+            & (label_correctness['cv_label_type'] == j_encoded)]
+        
+        prob[i][j] = np.sum(selection['correct']) / len(selection)
+
+
+prob
+#%%
 label_correctness = label_correctness.join(cv_predictions, how='outer')
 
 #%% [markdown]
@@ -149,8 +182,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     useful_train = train_labels[~pd.isna(train_labels['correct'])]
 
     #%%
-    # clf = BalancedBaggingClassifier(random_state=0)
-    # clf = BalancedRandomForestClassifier(random_state=0)
+    # clf = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
+    clf = BalancedRandomForestClassifier(random_state=0)  
     features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
     #%%
     useful_train = useful_train[~pd.isna(useful_train[features]).any(axis=1)]  # TODO don't eliminate all nans
@@ -173,7 +206,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     #%%
     # Probabililty correct
-    useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)]  # TODO don't eliminate all nans
+    useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
     useful_test.loc[:, 'prob'] = clf.predict_proba(useful_test[features])[:, 1]
 
@@ -188,9 +221,14 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     split_num += 1
 
-    print(f'{split_num} / 5', end='\r')
+    sys.stderr.write(f'{split_num} / 5\r')
 
-
+#%%
+plt.figure()
+plt.ylabel('relative importance')
+plt.title('Feature Importances')
+plt.xticks(rotation=90)
+plt.bar(features, clf.feature_importances_)
 #%%
 plt.figure(figsize=(5, 5))
 plt.xlim((20, 100))
@@ -199,4 +237,9 @@ plt.axis('scaled')
 plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
 plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
+z = np.polyfit(comparisons['predicted'], comparisons['accuracy'], 1)
+p = np.poly1d(z)
+plt.plot(comparisons['predicted'], p(comparisons['predicted']), 
+    label=f"y={z[0]:2f}x+({z[1]:2f}), {r2_score(comparisons['accuracy'], p(comparisons['predicted'])):2f}")
+plt.legend()
 #%%
