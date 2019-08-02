@@ -1,5 +1,11 @@
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Point, MultiPolygon, Polygon
+from rtree import index
 import json
+
+
+# Half the width/length of the bounding box of the point for r-tree
+# Should be a small number
+MIN_SIZE = 0.00001
 
 class RegionStats:
 
@@ -14,10 +20,14 @@ class RegionStats:
         self.feature_properties = list()
         self.geometries = list()
         for i in range(len(obj['features'])):
-            self.feature_properties.append(obj['features'][i]['properties'])
-            assert len(obj['features'][i]['geometry']['coordinates']) == 1
-            self.geometries.append(Polygon(obj['features'][i]['geometry']['coordinates'][0]))
-    
+            for k in obj['features'][i]['geometry']['coordinates']:
+                self.geometries.append(Polygon(k))
+                self.feature_properties.append(obj['features'][i]['properties'])
+
+        self.idx = index.Index()
+        for i, polygon in enumerate(self.geometries):
+            self.idx.insert(i, polygon.bounds)
+
     def get_properties(self, lng, lat):
         """
         Returns the properties for a longitude and latitude contained in the geojson
@@ -28,7 +38,17 @@ class RegionStats:
 
         """
         p = Point(lng, lat)
-        # TODO use r-tree
-        for i in range(len(self.geometries)):
-            if self.geometries[i].contains(p):
-                return self.feature_properties[i]
+        box = (lng - MIN_SIZE, lat - MIN_SIZE, lng + MIN_SIZE, lat + MIN_SIZE)
+        try:
+            for i in self.idx.intersection(box):
+                if self.geometries[i].contains(p):
+                    return self.feature_properties[i]
+        except Exception:
+            return None
+
+
+# if __name__ == '__main__':
+#     r = RegionStats('data_seattle.geojson')
+#     import pandas as pd
+#     a = pd.read_csv('sidewalk-seattle-label_point.csv')
+#     print(a.apply(lambda x: r.get_properties(x.lng, x.lat), axis=1))
