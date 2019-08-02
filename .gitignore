@@ -5,3 +5,4 @@
 *.png
 new_proximity
 *.~lock*
+*.pyc
