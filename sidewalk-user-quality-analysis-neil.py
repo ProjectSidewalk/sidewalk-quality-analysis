@@ -195,6 +195,42 @@ for i in range(len(label_types)):
 
 fig.tight_layout()
 fig2.tight_layout()
+
+#%% [markdown]
+# # Zone type
+
+#%%
+rs = RegionStats('Zoning_Detailed.geojson')
+label_correctness = label_correctness.join(
+    label_correctness.apply(lambda x: pd.Series(rs.get_properties(x.lng, x.lat)), axis=1)
+)
+
+#%%
+selection_all = label_correctness[['CATEGORY_DESC', 'correct', 'label_type']]
+selection_all = selection_all[~pd.isna(selection_all).any(axis=1)]
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 10))
+categories = selection_all['CATEGORY_DESC'].unique()
+
+for i in range(len(label_types)):
+    ax = axes[i//2][i%2]
+    label_encoded = label_type_encoder.transform([[label_types[i]]])[0][0]
+    selection = selection_all[selection_all['label_type'] == label_encoded]
+    # ax.set_xlabel('Population density (people/sq. mile)')
+    # ax.set_ylabel('count')
+    ax.set_title(label_types[i])
+    prob_correct = dict()
+    for category in categories:
+        if np.sum(selection['CATEGORY_DESC'] == category) > 100:
+            prob_correct[category] = np.mean(selection['correct'][selection['CATEGORY_DESC'] == category])
+        else:
+            prob_correct[category] = 0
+        # num_in[category] = np.sum(selection['CATEGORY_DESC'] == category)
+
+    ax.bar(prob_correct.keys(), prob_correct.values())
+    ax.set_ylim(0, 1)
+    ax.tick_params(axis='x', labelrotation=90)
+
+fig.tight_layout()
 #%% [markdown]
 # # Classification
 
@@ -210,11 +246,16 @@ from imblearn.ensemble import BalancedRandomForestClassifier, EasyEnsembleClassi
 from sklearn.neural_network import MLPClassifier
 from sklearn import svm
 from sklearn.base import BaseEstimator
+from sklearn.preprocessing import StandardScaler
 
-# #%%
-# from importlib import reload
-# import new_proximity
-# reload(new_proximity)
+#%%
+def prob_hist(probabilities, n_bins=5):
+    hist = np.zeros(n_bins)
+    hist[0] = np.sum(probabilities <= (1 / n_bins))
+    for i in range(1, n_bins):
+        hist[i] = np.sum(((i / n_bins) < probabilities) & (probabilities <= ((i+1) / n_bins)))
+
+    return hist
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
@@ -234,8 +275,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     useful_train = train_labels[~pd.isna(train_labels['correct'])]
 
     #%%
-    # clf = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
-    clf = BalancedRandomForestClassifier(random_state=0)  
+    clf = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
+    # clf = BalancedRandomForestClassifier(random_state=0)  
     features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
     #%%
     useful_train = useful_train[~pd.isna(useful_train[features]).any(axis=1)]  # TODO don't eliminate all nans
@@ -262,6 +303,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
     useful_test.loc[:, 'prob'] = clf.predict_proba(useful_test[features])[:, 1]
 
+    # a = useful_test.groupby('user_id').apply(lambda x: prob_hist(x['prob']))
+    # break
     #%%
     mean_probs = useful_test.groupby('user_id').apply(lambda x: 100 * np.nanmean(x['prob'].values)).rename('predicted')
 
