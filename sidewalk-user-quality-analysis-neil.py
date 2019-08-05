@@ -235,7 +235,7 @@ fig.tight_layout()
 # # Classification
 
 #%%
-from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, VotingClassifier
+from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, VotingClassifier, BaggingRegressor
 from sklearn.linear_model import LogisticRegressionCV
 # from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import KFold
@@ -249,13 +249,16 @@ from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
 
 #%%
-def prob_hist(probabilities, n_bins=5):
+def prob_hist(probabilities, n_bins=10):
     hist = np.zeros(n_bins)
     hist[0] = np.sum(probabilities <= (1 / n_bins))
     for i in range(1, n_bins):
         hist[i] = np.sum(((i / n_bins) < probabilities) & (probabilities <= ((i+1) / n_bins)))
 
     return hist / np.sum(hist)
+
+def dearray(array):
+    return np.array([list(l) for l in array])
 
 #%%
 #%%
@@ -274,14 +277,20 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     test_labels = test_labels.drop(columns='correct')
     #%%
-    useful_train = train_labels[~pd.isna(train_labels['correct'])]
+    train_labels = train_labels[~pd.isna(train_labels['correct'])]
+    train_labels = train_labels[~(pd.isna(train_labels[features]).any(axis=1))]
 
     #%%
-    clf = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
+    clf_labels = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
+    clf_accuracy = BaggingRegressor(n_jobs=-1, random_state=0, n_estimators=100)
     # clf = BalancedRandomForestClassifier(random_state=0)  
     features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
     #%%
-    useful_train = useful_train[~pd.isna(useful_train[features]).any(axis=1)]  # TODO don't eliminate all nans
+    mask = np.random.permutation(train_labels.index.values)
+    mask_labels = mask[:len(mask)//6]
+    mask_accuracy = mask[len(mask)//6:]
+    
+      # TODO don't eliminate all nans
     # def get_proximity_info(label):
     #     try:
     #         distance, middleness = compute_proximity(label.lat, label.lng, cache=True)
@@ -294,26 +303,32 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #         'proximity_middleness': middleness
     #     })
 
-    # useful_train = useful_train.join(useful_train.apply(get_proximity_info, axis=1))
+    #   clf_labels_training = clf_labels_training.join    clf_labels_training.apply(get_proximity_info, axis=1))
 
     #%%
-    clf.fit(useful_train[features], useful_train['correct'].astype(int))
-
+    clf_labels.fit(train_labels.loc[mask_labels][features], train_labels.loc[mask_labels]['correct'].astype(int))
+    train_labels = train_labels.join(pd.Series(data=clf_labels.predict_proba(train_labels.loc[mask_accuracy][features])[:, 1], index=mask_accuracy).rename('prob'), how='outer')
+    prob_hist_predictions = train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
+    
+    clf_accuracy.fit(dearray(prob_hist_predictions.values), y_train.loc[prob_hist_predictions.index])
     #%%
     # Probabililty correct
     useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
-    useful_test.loc[:, 'prob'] = clf.predict_proba(useful_test[features])[:, 1]
+    useful_test.loc[:, 'prob'] = clf_labels.predict_proba(useful_test[features])[:, 1]
 
     # a = useful_test.groupby('user_id').apply(lambda x: prob_hist(x['prob']))
     # break
     #%%
 
-    def predict_accuracy(probs):
-        selected_probs = probs[~np.isnan(probs)]
-        return np.mean(selected_probs)
+    # Now predict accuracy
 
-    mean_probs = useful_test.groupby('user_id').apply(lambda x: 100 * predict_accuracy(x['prob'].values)).rename('predicted')
+    def predict_accuracy(probs):
+        # selected_probs = probs[~np.isnan(probs)]
+        # return np.mean(selected_probs)
+        return clf_accuracy.predict([prob_hist(probs)])[0]
+
+    mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values)).rename('predicted')
 
     #%%
     comparison = pd.DataFrame((mean_probs, y_test, pd.Series(np.full((len(y_test)), split_num), name='split_num', index=y_test.index))).T
@@ -356,8 +371,8 @@ plt.ylim((20, 100))
 plt.axis('scaled')
 plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
-plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['color'].values)
-# plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
+# plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['color'].values)
+plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
 # plt.scatter(comparisons['predicted'], comparisons['confidence'], c=comparisons['color'].values)
 
 z = np.polyfit(comparisons['predicted'], comparisons['accuracy'], 1)
@@ -370,44 +385,33 @@ plt.legend()
 #%%
 
 #%%
-X_train, X_test, y_train, y_test = train_test_split(users.index, users['accuracy'], random_state=1, test_size=0.2)
-
-
-#%%
-train_labels = label_correctness[label_correctness['user_id'].isin(X_train)][features]
-test_labels = label_correctness[label_correctness['user_id'].isin(X_test)]
-
-#%%
-u = UMAP(n_components=3, random_state=0)
-u.fit(useful_train['features'])
-
-#%%
-comparisons
-
-#%%
-X_train, X_test, y_train, y_test = train_test_split(users.index, users['accuracy'], random_state=1, test_size=0.2)
-
-
-#%%
-from sklearn.ensemble import BaggingRegressor
-clf = BaggingRegressor(n_jobs=-1, random_state=0, n_estimators=100)
-
-#%%
-np.array([list(l) for l in comparisons.loc[X_train]['prob_hist'].values])
-
-#%%
-clf.fit([list(l) for l in comparisons.loc[X_train]['prob_hist'].values], comparisons.loc[X_train]['accuracy'])
-
-
-#%%
-prediction = clf.predict([list(l) for l in comparisons.loc[X_test]['prob_hist'].values])
-prediction = pd.Series(data=prediction, index=X_test)
-#%%
 plt.figure(figsize=(5, 5))
 plt.xlim((20, 100))
 plt.ylim((20, 100))
 plt.axis('scaled')
 plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
-plt.scatter(prediction, y_test)
+for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).split(users.index):
+    X_train, X_test = users.index[train_index], users.index[test_index]
+    y_train, y_test = users['accuracy'][train_index], users['accuracy'][test_index]
+
+    #%%
+    from sklearn.ensemble import BaggingRegressor
+    clf = BaggingRegressor(n_jobs=-1, random_state=0, n_estimators=100)
+
+    #%%
+    np.array([list(l) for l in comparisons.loc[X_train]['prob_hist'].values])
+
+    #%%
+    clf.fit([list(l) for l in comparisons.loc[X_train]['prob_hist'].values], comparisons.loc[X_train]['accuracy'])
+
+
+    #%%
+    prediction = clf.predict([list(l) for l in comparisons.loc[X_test]['prob_hist'].values])
+    prediction = pd.Series(data=prediction, index=X_test)
+    #%%
+    plt.scatter(prediction, y_test)
+    #%%
+
+
 #%%
