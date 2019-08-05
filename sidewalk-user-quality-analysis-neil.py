@@ -255,7 +255,9 @@ def prob_hist(probabilities, n_bins=5):
     for i in range(1, n_bins):
         hist[i] = np.sum(((i / n_bins) < probabilities) & (probabilities <= ((i+1) / n_bins)))
 
-    return hist
+    return hist / np.sum(hist)
+
+#%%
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
@@ -306,10 +308,17 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     # a = useful_test.groupby('user_id').apply(lambda x: prob_hist(x['prob']))
     # break
     #%%
-    mean_probs = useful_test.groupby('user_id').apply(lambda x: 100 * np.nanmean(x['prob'].values)).rename('predicted')
+
+    def predict_accuracy(probs):
+        selected_probs = probs[~np.isnan(probs)]
+        return np.mean(selected_probs)
+
+    mean_probs = useful_test.groupby('user_id').apply(lambda x: 100 * predict_accuracy(x['prob'].values)).rename('predicted')
 
     #%%
     comparison = pd.DataFrame((mean_probs, y_test, pd.Series(np.full((len(y_test)), split_num), name='split_num', index=y_test.index))).T
+    comparison['prob_hist'] = useful_test.groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
+
     comparisons = comparisons.append(comparison)
 
     #%%
@@ -318,12 +327,28 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     sys.stderr.write(f'{split_num} / 5\r')
 
-#%%
-plt.figure()
-plt.ylabel('relative importance')
-plt.title('Feature Importances')
-plt.xticks(rotation=90)
-plt.bar(features, clf.feature_importances_)
+#%% 
+def get_class_color(name):
+    if users.loc[name]['class'] == 'undefined':
+        return (0.5, 0.5, 0.5)
+    elif users.loc[name]['class'] == 'bad':
+        return (1, 0, 0)
+    elif users.loc[name]['class'] == 'good':
+        return (0, 1, 0)
+    elif users.loc[name]['class'] == 'region':
+        return (0, 0, 1)
+    
+    return (0.5, 0.5, 0.5)
+
+# comparisons = comparisons.drop(columns=('color'))
+comparisons = comparisons.join(comparisons.apply(lambda x: get_class_color(x.name), axis=1).rename('color'))
+
+# #%%
+# plt.figure()
+# plt.ylabel('relative importance')
+# plt.title('Feature Importances')
+# plt.xticks(rotation=90)
+# plt.bar(features, clf.feature_importances_)
 #%%
 plt.figure(figsize=(5, 5))
 plt.xlim((20, 100))
@@ -331,10 +356,58 @@ plt.ylim((20, 100))
 plt.axis('scaled')
 plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
-plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
+plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['color'].values)
+# plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
+# plt.scatter(comparisons['predicted'], comparisons['confidence'], c=comparisons['color'].values)
+
 z = np.polyfit(comparisons['predicted'], comparisons['accuracy'], 1)
 p = np.poly1d(z)
 plt.plot(comparisons['predicted'], p(comparisons['predicted']), 
     label=f"y={z[0]:2f}x+({z[1]:2f}), {r2_score(comparisons['accuracy'], p(comparisons['predicted'])):2f}")
 plt.legend()
+
+
+#%%
+
+#%%
+X_train, X_test, y_train, y_test = train_test_split(users.index, users['accuracy'], random_state=1, test_size=0.2)
+
+
+#%%
+train_labels = label_correctness[label_correctness['user_id'].isin(X_train)][features]
+test_labels = label_correctness[label_correctness['user_id'].isin(X_test)]
+
+#%%
+u = UMAP(n_components=3, random_state=0)
+u.fit(useful_train['features'])
+
+#%%
+comparisons
+
+#%%
+X_train, X_test, y_train, y_test = train_test_split(users.index, users['accuracy'], random_state=1, test_size=0.2)
+
+
+#%%
+from sklearn.ensemble import BaggingRegressor
+clf = BaggingRegressor(n_jobs=-1, random_state=0, n_estimators=100)
+
+#%%
+np.array([list(l) for l in comparisons.loc[X_train]['prob_hist'].values])
+
+#%%
+clf.fit([list(l) for l in comparisons.loc[X_train]['prob_hist'].values], comparisons.loc[X_train]['accuracy'])
+
+
+#%%
+prediction = clf.predict([list(l) for l in comparisons.loc[X_test]['prob_hist'].values])
+prediction = pd.Series(data=prediction, index=X_test)
+#%%
+plt.figure(figsize=(5, 5))
+plt.xlim((20, 100))
+plt.ylim((20, 100))
+plt.axis('scaled')
+plt.xlabel('Predicted accuracy')
+plt.ylabel('Actual accuracy')
+plt.scatter(prediction, y_test)
 #%%
