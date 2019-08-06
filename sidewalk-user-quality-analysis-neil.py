@@ -247,9 +247,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn import svm
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
+from sklearn.naive_bayes import GaussianNB
 
 #%%
-def prob_hist(probabilities, n_bins=10):
+def prob_hist(probabilities, n_bins=5):
     hist = np.zeros(n_bins)
     hist[0] = np.sum(probabilities <= (1 / n_bins))
     for i in range(1, n_bins):
@@ -261,11 +262,15 @@ def dearray(array):
     return np.array([list(l) for l in array])
 
 #%%
+features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 
+    'pitch', 'zoom', 'lat', 'lng', 'density', 'cv_confidence', 'cv_label_type']
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
+scaler = StandardScaler()
 comparisons = pd.DataFrame()
 split_num = 0
+
 for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).split(users.index):
     X_train, X_test = users.index[train_index], users.index[test_index]
     y_train, y_test = users['accuracy'][train_index], users['accuracy'][test_index]
@@ -279,12 +284,12 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     train_labels = train_labels[~pd.isna(train_labels['correct'])]
     train_labels = train_labels[~(pd.isna(train_labels[features]).any(axis=1))]
-
+    train_labels[features] = scaler.fit_transform(train_labels[features])
     #%%
     clf_labels = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
-    clf_accuracy = BaggingRegressor(n_jobs=-1, random_state=0, n_estimators=100)
+    # clf_labels = GaussianNB()
+    clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
     # clf = BalancedRandomForestClassifier(random_state=0)  
-    features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
     #%%
     mask = np.random.permutation(train_labels.index.values)
     mask_labels = mask[:len(mask)//6]
@@ -306,14 +311,16 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #   clf_labels_training = clf_labels_training.join    clf_labels_training.apply(get_proximity_info, axis=1))
 
     #%%
+    # clf_labels.fit(train_labels[features], train_labels['correct'].astype(int))
     clf_labels.fit(train_labels.loc[mask_labels][features], train_labels.loc[mask_labels]['correct'].astype(int))
     train_labels = train_labels.join(pd.Series(data=clf_labels.predict_proba(train_labels.loc[mask_accuracy][features])[:, 1], index=mask_accuracy).rename('prob'), how='outer')
     prob_hist_predictions = train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
     
-    clf_accuracy.fit(dearray(prob_hist_predictions.values), y_train.loc[prob_hist_predictions.index])
+    clf_accuracy.fit(dearray(prob_hist_predictions.values), prob_hist_predictions.index.isin(good_users))
     #%%
     # Probabililty correct
     useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
+    useful_test[features] = scaler.transform(useful_test[features])
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
     useful_test.loc[:, 'prob'] = clf_labels.predict_proba(useful_test[features])[:, 1]
 
@@ -325,7 +332,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     def predict_accuracy(probs):
         # selected_probs = probs[~np.isnan(probs)]
-        # return np.mean(selected_probs)
+        # return 100 * np.mean(selected_probs)
         return clf_accuracy.predict([prob_hist(probs)])[0]
 
     mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values)).rename('predicted')
@@ -342,6 +349,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     sys.stderr.write(f'{split_num} / 5\r')
 
+#%%
+comparisons = comparisons.join(users['class'])
 #%% 
 def get_class_color(name):
     if users.loc[name]['class'] == 'undefined':
