@@ -242,25 +242,28 @@ from sklearn.model_selection import KFold
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler
-from imblearn.ensemble import BalancedRandomForestClassifier, EasyEnsembleClassifier, BalancedBaggingClassifier
+from imblearn.ensemble import BalancedRandomForestClassifier, EasyEnsembleRegressor, EasyEnsembleClassifier, BalancedBaggingClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn import svm
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler
-
 #%%
-def prob_hist(probabilities, n_bins=10):
+def prob_hist(probabilities, n_bins=5):
     hist = np.zeros(n_bins)
     hist[0] = np.sum(probabilities <= (1 / n_bins))
     for i in range(1, n_bins):
         hist[i] = np.sum(((i / n_bins) < probabilities) & (probabilities <= ((i+1) / n_bins)))
 
-    return hist / np.sum(hist)
-
+    # return hist / np.sum(hist)
+    # return hist
+    return [np.mean(probabilities), np.std(probabilities), np.mean(probabilities > 0.8),
+        np.percentile(probabilities, 25), np.percentile(probabilities, 50),
+        np.percentile(probabilities, 75)]
 def dearray(array):
     return np.array([list(l) for l in array])
 
 #%%
+features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
@@ -279,13 +282,15 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     train_labels = train_labels[~pd.isna(train_labels['correct'])]
     train_labels = train_labels[~(pd.isna(train_labels[features]).any(axis=1))]
+    # scaler = StandardScaler()
+    # train_labels[features] = scaler.fit_transform(train_labels[features])
 
     #%%
-    clf_labels = BalancedBaggingClassifier(random_state=0, n_estimators=100, n_jobs=-1)
-    clf_accuracy = BaggingRegressor(n_jobs=-1, random_state=0, n_estimators=100)
+    clf_labels = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=100)
+    # clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
+    clf_accuracy = DecisionTreeClassifier()
     # clf = BalancedRandomForestClassifier(random_state=0)  
-    features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
-    #%%
+     #%%
     mask = np.random.permutation(train_labels.index.values)
     mask_labels = mask[:len(mask)//6]
     mask_accuracy = mask[len(mask)//6:]
@@ -310,10 +315,11 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     train_labels = train_labels.join(pd.Series(data=clf_labels.predict_proba(train_labels.loc[mask_accuracy][features])[:, 1], index=mask_accuracy).rename('prob'), how='outer')
     prob_hist_predictions = train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
     
-    clf_accuracy.fit(dearray(prob_hist_predictions.values), y_train.loc[prob_hist_predictions.index])
+    clf_accuracy.fit(dearray(prob_hist_predictions.values), y_train.loc[prob_hist_predictions.index] > 65)
     #%%
     # Probabililty correct
     useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
+    # useful_test[features] = scaler.transform(useful_test[features])
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
     useful_test.loc[:, 'prob'] = clf_labels.predict_proba(useful_test[features])[:, 1]
 
@@ -324,6 +330,10 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     # Now predict accuracy
 
     def predict_accuracy(probs):
+        # fig = plt.figure()
+        # plt.xlim(0, 1)
+        # plt.hist(probs)
+        
         # selected_probs = probs[~np.isnan(probs)]
         # return np.mean(selected_probs)
         return clf_accuracy.predict([prob_hist(probs)])[0]
@@ -333,7 +343,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     comparison = pd.DataFrame((mean_probs, y_test, pd.Series(np.full((len(y_test)), split_num), name='split_num', index=y_test.index))).T
     comparison['prob_hist'] = useful_test.groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
-
+    comparison['probs'] = useful_test.groupby('user_id').apply(lambda x: x['prob'].values)
     comparisons = comparisons.append(comparison)
 
     #%%
@@ -341,6 +351,15 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     split_num += 1
 
     sys.stderr.write(f'{split_num} / 5\r')
+
+comparisons['accuracy'] = (comparisons['accuracy'] > 65).astype(int)
+
+#%%
+from sklearn.metrics import precision_score, accuracy_score, recall_score
+
+print(precision_score(comparisons['accuracy'], comparisons['predicted']))
+print(recall_score(comparisons['accuracy'], comparisons['predicted']))
+print(accuracy_score(comparisons['accuracy'], comparisons['predicted']))
 
 #%% 
 def get_class_color(name):
