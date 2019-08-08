@@ -33,7 +33,8 @@ from sklearn.metrics import r2_score
 import sys
 
 #%%
-users = pd.read_csv('ml-users.csv')
+# users = pd.read_csv('ml-users.csv')
+users = pd.read_csv('users_one_mission.csv')
 users = users.set_index('user_id')
 #%%
 # Users w/ accuracies below 65% and are not in neighorhoods without sidewalks
@@ -77,7 +78,8 @@ users = users.join(users.apply(lambda x: user_class(x.name), axis=1).rename('cla
 point_labels = pd.read_csv('sidewalk-seattle-label_point.csv')
 point_labels.set_index('label_id', inplace=True)
 #%%
-label_correctness = pd.read_csv('ml-label-correctness.csv')
+# label_correctness = pd.read_csv('ml-label-correctness.csv')
+label_correctness = pd.read_csv('ml-label-correctness-one-mission.csv')
 #%%
 label_correctness.set_index('label_id', inplace=True)
 #%%
@@ -86,6 +88,11 @@ label_correctness = label_correctness.join(point_labels)
 label_correctness = label_correctness[['user_id', 'label_type', 
     'correct', 'sv_image_x', 'sv_image_y', 'canvas_x', 'canvas_y', 
     'heading', 'pitch', 'zoom', 'lat', 'lng']]
+
+#%%
+users_for_analysis = users.index[users['Labels Validated'] > 26]
+label_correctness = label_correctness[label_correctness['user_id'].isin(users_for_analysis)]
+users = users.loc[users_for_analysis]
 #%%
 label_correctness.update(label_correctness['correct'][~pd.isna(label_correctness['correct'])] == 't')
 #%%
@@ -242,7 +249,7 @@ from sklearn.model_selection import KFold
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler
-from imblearn.ensemble import BalancedRandomForestClassifier, EasyEnsembleRegressor, EasyEnsembleClassifier, BalancedBaggingClassifier
+from imblearn.ensemble import BalancedRandomForestClassifier, EasyEnsembleClassifier, BalancedBaggingClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn import svm
 from sklearn.base import BaseEstimator
@@ -264,6 +271,7 @@ def dearray(array):
 
 #%%
 features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
+np.random.seed(0)
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
@@ -290,12 +298,12 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     clf_labels = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=100)
     # clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
-    clf_accuracy = DecisionTreeClassifier()
+    clf_accuracy = BalancedBaggingClassifier(random_state=0)
     # clf = BalancedRandomForestClassifier(random_state=0)  
      #%%
     mask = np.random.permutation(train_labels.index.values)
-    mask_labels = mask[:len(mask)//6]
-    mask_accuracy = mask[len(mask)//6:]
+    mask_labels = mask[:int(len(mask) * 0.16)]
+    mask_accuracy = mask[int(len(mask) * 0.16):]
     
       # TODO don't eliminate all nans
     # def get_proximity_info(label):
@@ -318,7 +326,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     train_labels = train_labels.join(pd.Series(data=clf_labels.predict_proba(train_labels.loc[mask_accuracy][features])[:, 1], index=mask_accuracy).rename('prob'), how='outer')
     prob_hist_predictions = train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
     
-    clf_accuracy.fit(dearray(prob_hist_predictions.values), y_train.loc[prob_hist_predictions.index] > 65)
+    clf_accuracy.fit(dearray(prob_hist_predictions.values), (y_train.loc[prob_hist_predictions.index] > 0.65).astype(int))
     #%%
     # Probabililty correct
     useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
@@ -338,7 +346,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
         # plt.hist(probs)
         
         # selected_probs = probs[~np.isnan(probs)]
-        # return 100 * np.mean(selected_probs)
+        # return np.mean(selected_probs)
         return clf_accuracy.predict([prob_hist(probs)])[0]
 
     mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values)).rename('predicted')
@@ -355,14 +363,15 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     sys.stderr.write(f'{split_num} / 5\r')
 
-comparisons['accuracy'] = (comparisons['accuracy'] > 65).astype(int)
+comparisons['accuracy'] = (comparisons['accuracy'] > 0.65).astype(int)
 
 #%%
-from sklearn.metrics import precision_score, accuracy_score, recall_score
-
-print(precision_score(comparisons['accuracy'], comparisons['predicted']))
-print(recall_score(comparisons['accuracy'], comparisons['predicted']))
-print(accuracy_score(comparisons['accuracy'], comparisons['predicted']))
+from sklearn.metrics import precision_score, accuracy_score, recall_score, confusion_matrix
+mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
+print(precision_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
+print(recall_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
+print(accuracy_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
+print(confusion_matrix(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 
 #%% 
 def get_class_color(name):
@@ -388,19 +397,19 @@ comparisons = comparisons.join(comparisons.apply(lambda x: get_class_color(x.nam
 # plt.bar(features, clf.feature_importances_)
 #%%
 plt.figure(figsize=(5, 5))
-plt.xlim((20, 100))
-plt.ylim((20, 100))
-plt.axis('scaled')
+# plt.xlim((20, 100))
+# plt.ylim((20, 100))
+# plt.axis('scaled')
 plt.xlabel('Predicted accuracy')
 plt.ylabel('Actual accuracy')
 # plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['color'].values)
 plt.scatter(comparisons['predicted'], comparisons['accuracy'], c=comparisons['split_num'])
 # plt.scatter(comparisons['predicted'], comparisons['confidence'], c=comparisons['color'].values)
 
-z = np.polyfit(comparisons['predicted'], comparisons['accuracy'], 1)
-p = np.poly1d(z)
-plt.plot(comparisons['predicted'], p(comparisons['predicted']), 
-    label=f"y={z[0]:2f}x+({z[1]:2f}), {r2_score(comparisons['accuracy'], p(comparisons['predicted'])):2f}")
+# z = np.polyfit(comparisons['predicted'], comparisons['accuracy'], 1)
+# p = np.poly1d(z)
+# plt.plot(comparisons['predicted'], p(comparisons['predicted']), 
+#     label=f"y={z[0]:2f}x+({z[1]:2f}), {r2_score(comparisons['accuracy'], p(comparisons['predicted'])):2f}")
 plt.legend()
 
 
@@ -434,6 +443,9 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     plt.scatter(prediction, y_test)
     #%%
+
+
+#%%
 
 
 #%%
