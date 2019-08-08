@@ -271,13 +271,13 @@ def dearray(array):
 
 #%%
 features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
-np.random.seed(0)
 #%%
 from sklearn.model_selection import train_test_split, KFold
 
 scaler = StandardScaler()
 comparisons = pd.DataFrame()
 split_num = 0
+np.random.seed(0)
 
 for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).split(users.index):
     X_train, X_test = users.index[train_index], users.index[test_index]
@@ -296,9 +296,9 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     # train_labels[features] = scaler.fit_transform(train_labels[features])
 
     #%%
-    clf_labels = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=100)
+    clf_labels = RandomForestClassifier(random_state=0, n_jobs=-1, n_estimators=10)
     # clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
-    clf_accuracy = BalancedBaggingClassifier(random_state=0)
+    clf_accuracy = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=10)
     # clf = BalancedRandomForestClassifier(random_state=0)  
      #%%
     mask = np.random.permutation(train_labels.index.values)
@@ -347,7 +347,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
         
         # selected_probs = probs[~np.isnan(probs)]
         # return np.mean(selected_probs)
-        return clf_accuracy.predict([prob_hist(probs)])[0]
+        return clf_accuracy.predict_proba([prob_hist(probs)])[:, 1][0]
 
     mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values)).rename('predicted')
 
@@ -373,6 +373,14 @@ print(recall_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]
 print(accuracy_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 print(confusion_matrix(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 
+#%%
+mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
+plt.figure()
+plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 1)], bins=50, alpha=0.5, label='good')
+plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 0)], bins=50, alpha=0.5, label='bad')
+plt.xlabel('predicted probability that the user is good')
+plt.ylabel('count')
+plt.legend()
 #%% 
 def get_class_color(name):
     if users.loc[name]['class'] == 'undefined':
