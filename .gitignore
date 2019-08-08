@@ -6,3 +6,4 @@
 new_proximity
 *.~lock*
 *.pyc
+label-intersection-proximity/
