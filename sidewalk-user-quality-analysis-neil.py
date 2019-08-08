@@ -6,31 +6,40 @@
 # For github issues and brainstorming features and analyses, use github:
 # - https://github.com/ProjectSidewalk/sidewalk-quality-analysis/issues
 #%%
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-from dateutil import parser as parser
-import parse as str_parse
+import csv
+import sys
 import time
 from datetime import datetime, timezone
-import csv
-from sklearn import svm
-import sklearn.feature_selection
-from sklearn.feature_selection import SelectFromModel
-from sklearn import tree
-from sklearn.ensemble import ExtraTreesClassifier, ExtraTreesRegressor
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import parse as str_parse
 import seaborn as sns
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import KFold
-from sklearn.neural_network import MLPClassifier
-from sklearn.neural_network import MLPRegressor
-from sklearn import linear_model
-from sklearn.model_selection import cross_val_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.feature_selection import VarianceThreshold
+import sklearn.feature_selection
+from dateutil import parser as parser
+from imblearn.ensemble import (BalancedBaggingClassifier,
+                               BalancedRandomForestClassifier,
+                               EasyEnsembleClassifier)
+from imblearn.over_sampling import ADASYN, SMOTE, RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn import linear_model, svm, tree
+from sklearn.base import BaseEstimator
+from sklearn.ensemble import (BaggingClassifier, BaggingRegressor,
+                              ExtraTreesClassifier, ExtraTreesRegressor,
+                              RandomForestClassifier, VotingClassifier)
+from sklearn.feature_selection import RFECV, SelectFromModel, VarianceThreshold
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.metrics import (accuracy_score, confusion_matrix, precision_score,
+                             r2_score, recall_score)
+# from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import KFold, cross_val_score, train_test_split, StratifiedKFold
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+
 from new_proximity.intersection_proximity import compute_proximity
-from sklearn.metrics import r2_score
-import sys
+from region_stats import RegionStats
 
 #%%
 # users = pd.read_csv('ml-users.csv')
@@ -96,8 +105,6 @@ users = users.loc[users_for_analysis]
 #%%
 label_correctness.update(label_correctness['correct'][~pd.isna(label_correctness['correct'])] == 't')
 #%%
-from sklearn.preprocessing import OrdinalEncoder
-#%%
 label_type_encoder = OrdinalEncoder()
 #%%
 label_correctness['label_type'] = label_type_encoder.fit_transform(label_correctness[['label_type']])
@@ -155,8 +162,6 @@ label_correctness = label_correctness.join(cv_predictions, how='outer')
 #%% [markdown]
 # # Population Density
 
-#%%
-from region_stats import RegionStats
 rs = RegionStats('data_seattle.geojson')
 label_correctness = label_correctness.join(
     label_correctness.apply(lambda x: pd.Series(rs.get_properties(x.lng, x.lat)), axis=1)
@@ -242,19 +247,6 @@ fig.tight_layout()
 # # Classification
 
 #%%
-from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, VotingClassifier, BaggingRegressor
-from sklearn.linear_model import LogisticRegressionCV
-# from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import KFold
-from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.ensemble import BalancedRandomForestClassifier, EasyEnsembleClassifier, BalancedBaggingClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn import svm
-from sklearn.base import BaseEstimator
-from sklearn.preprocessing import StandardScaler
-#%%
 def prob_hist(probabilities, n_bins=5):
     hist = np.zeros(n_bins)
     hist[0] = np.sum(probabilities <= (1 / n_bins))
@@ -271,8 +263,6 @@ def dearray(array):
 
 #%%
 features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
-#%%
-from sklearn.model_selection import train_test_split, KFold
 
 scaler = StandardScaler()
 comparisons = pd.DataFrame()
@@ -365,14 +355,32 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
 comparisons['accuracy'] = (comparisons['accuracy'] > 0.65).astype(int)
 
-#%%
-from sklearn.metrics import precision_score, accuracy_score, recall_score, confusion_matrix
 mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
 print(precision_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 print(recall_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 print(accuracy_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 print(confusion_matrix(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
 
+#%% 
+# Feature Selection
+mask = ~(pd.isna(label_correctness[features]).any(axis=1) | pd.isna(label_correctness['correct']))
+X = label_correctness[features][mask]
+y = label_correctness['correct'][mask].astype(int)
+rfecv = RFECV(estimator=RandomForestClassifier(), step=1, cv=StratifiedKFold(2),
+              scoring='accuracy')
+rfecv.fit(X, y)
+# RandomForestClassifier().fit(X, y)
+
+#%%
+
+print("Optimal number of features : %d" % rfecv.n_features_)
+
+# Plot number of features VS. cross-validation scores
+plt.figure()
+plt.xlabel("Number of features selected")
+plt.ylabel("Cross validation score (nb of correct classifications)")
+plt.plot(range(1, len(rfecv.grid_scores_) + 1), rfecv.grid_scores_)
+plt.show()
 #%%
 mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
 plt.figure()
