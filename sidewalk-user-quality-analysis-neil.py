@@ -99,7 +99,7 @@ label_correctness = label_correctness[['user_id', 'label_type',
     'heading', 'pitch', 'zoom', 'lat', 'lng']]
 
 #%%
-users_for_analysis = users.index[users['Labels Validated'] > 26]
+users_for_analysis = users.index[users['labels_validated'] > 26]
 label_correctness = label_correctness[label_correctness['user_id'].isin(users_for_analysis)]
 users = users.loc[users_for_analysis]
 #%%
@@ -261,6 +261,13 @@ def prob_hist(probabilities, n_bins=5):
 def dearray(array):
     return np.array([list(l) for l in array])
 
+#%% [markdown]
+# # Tyler's features
+
+#%%
+user_quality_features = pd.read_csv('all_users.csv')
+user_quality_features.set_index('user_id', inplace=True)
+
 #%%
 features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
 
@@ -288,7 +295,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     clf_labels = RandomForestClassifier(random_state=0, n_jobs=-1, n_estimators=10)
     # clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
-    clf_accuracy = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=50)
+    clf_accuracy = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=20)
     # clf = BalancedRandomForestClassifier(random_state=0)  
      #%%
     mask = np.random.permutation(train_labels.index.values)
@@ -314,9 +321,11 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     # clf_labels.fit(train_labels[features], train_labels['correct'].astype(int))
     clf_labels.fit(train_labels.loc[mask_labels][features], train_labels.loc[mask_labels]['correct'].astype(int))
     train_labels = train_labels.join(pd.Series(data=clf_labels.predict_proba(train_labels.loc[mask_accuracy][features])[:, 1], index=mask_accuracy).rename('prob'), how='outer')
-    prob_hist_predictions = train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values))
-    
-    clf_accuracy.fit(dearray(prob_hist_predictions.values), (y_train.loc[prob_hist_predictions.index] > 0.65).astype(int))
+    prob_hist_predictions = pd.DataFrame(train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values)).rename('prob'))
+    prob_hist_predictions = prob_hist_predictions.join(user_quality_features)
+    clf_accuracy.fit(np.concatenate((dearray(prob_hist_predictions['prob']), 
+        prob_hist_predictions.drop(columns='prob').values), axis=1), 
+        (y_train.loc[prob_hist_predictions.index] > 65).astype(int))
     #%%
     # Probabililty correct
     useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
@@ -330,17 +339,17 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     # Now predict accuracy
 
-    def predict_accuracy(probs):
+    def predict_accuracy(probs, features):
         # fig = plt.figure()
         # plt.xlim(0, 1)
         # plt.hist(probs)
         
         # selected_probs = probs[~np.isnan(probs)]
         # return np.mean(selected_probs)
-        # return clf_accuracy.predict_proba([prob_hist(probs)])[:, 1][0]
-        return clf_accuracy.predict([prob_hist(probs)])[0]
+        return clf_accuracy.predict_proba([np.concatenate((prob_hist(probs), features))])[:, 1][0]
+        # return clf_accuracy.predict([np.concatenate((prob_hist(probs), features))])[0]
 
-    mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values)).rename('predicted')
+    mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values, user_quality_features.loc[x.name])).rename('predicted')
 
     #%%
     comparison = pd.DataFrame((mean_probs, y_test, pd.Series(np.full((len(y_test)), split_num), name='split_num', index=y_test.index))).T
@@ -352,9 +361,9 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     split_num += 1
 
-    sys.stderr.write(f'{split_num} / 5\r')
+    sys.stderr.write(f'{split_num} / 5\n')
 
-comparisons['accuracy'] = (comparisons['accuracy'] > 0.65).astype(int)
+comparisons['accuracy'] = (comparisons['accuracy'] > 65).astype(int)
 
 mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
 print(precision_score(comparisons['accuracy'][mask], comparisons['predicted'][mask]))
@@ -384,8 +393,8 @@ plt.show()
 #%%
 mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
 plt.figure()
-plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 1)], bins=50, alpha=0.5, label='good')
-plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 0)], bins=50, alpha=0.5, label='bad')
+plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 1)], alpha=0.5, label='good')
+plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 0)], alpha=0.5, label='bad')
 plt.xlabel('predicted probability that the user is good')
 plt.ylabel('count')
 plt.legend()
