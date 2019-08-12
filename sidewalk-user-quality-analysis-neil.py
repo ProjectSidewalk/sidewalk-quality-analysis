@@ -111,11 +111,12 @@ label_correctness['label_type'] = label_type_encoder.fit_transform(label_correct
 
 #%% [markdown]
 # # CV Analysis
-cv_predictions = pd.read_csv('summary_user.csv').rename(
+# cv_predictions = pd.read_csv('summary_user.csv').rename(
+cv_predictions = pd.read_csv('user_summary.csv').rename(
     columns={
-        'Label_id': 'label_id',
-        'Confidence': 'cv_confidence',
-        'CVLabel': 'cv_label'
+        'Label_Id': 'label_id',
+        'CV_Confidence': 'cv_confidence',
+        'CV_Label': 'cv_label'
     }
 )
 
@@ -128,11 +129,13 @@ cv_predictions.set_index('label_id', inplace=True)
 label_types = ['CurbRamp', 'NoCurbRamp', 'Obstacle', 'SurfaceProblem']
 
 #%%
+label_correctness = label_correctness.join(cv_predictions)
+#%%
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 8))
 for i in range(len(label_types)):
     ax = axes[i//2][i%2]
     label_encoded = label_type_encoder.transform([[label_types[i]]])[0][0]
-    selection = label_correctness[~pd.isna(label_correctness['correct']) & (label_correctness['label_type'] == label_encoded)]
+    selection = label_correctness[~pd.isna(label_correctness['correct']) & ~pd.isna(label_correctness['cv_confidence']) & (label_correctness['label_type'] == label_encoded)]
     ax.set_xlabel('CV Confidence')
     ax.set_ylabel('relative count')
     ax.set_title(label_types[i])
@@ -156,9 +159,6 @@ for i in range(len(label_types)):
 
 
 prob
-#%%
-label_correctness = label_correctness.join(cv_predictions, how='outer')
-
 #%% [markdown]
 # # Population Density
 
@@ -288,7 +288,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     #%%
     clf_labels = RandomForestClassifier(random_state=0, n_jobs=-1, n_estimators=10)
     # clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
-    clf_accuracy = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=10)
+    clf_accuracy = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=50)
     # clf = BalancedRandomForestClassifier(random_state=0)  
      #%%
     mask = np.random.permutation(train_labels.index.values)
@@ -337,7 +337,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
         
         # selected_probs = probs[~np.isnan(probs)]
         # return np.mean(selected_probs)
-        return clf_accuracy.predict_proba([prob_hist(probs)])[:, 1][0]
+        # return clf_accuracy.predict_proba([prob_hist(probs)])[:, 1][0]
+        return clf_accuracy.predict([prob_hist(probs)])[0]
 
     mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values)).rename('predicted')
 
@@ -366,13 +367,12 @@ print(confusion_matrix(comparisons['accuracy'][mask], comparisons['predicted'][m
 mask = ~(pd.isna(label_correctness[features]).any(axis=1) | pd.isna(label_correctness['correct']))
 X = label_correctness[features][mask]
 y = label_correctness['correct'][mask].astype(int)
-rfecv = RFECV(estimator=RandomForestClassifier(), step=1, cv=StratifiedKFold(2),
+rfecv = RFECV(estimator=RandomForestClassifier(), step=1, cv=StratifiedKFold(5),
               scoring='accuracy')
 rfecv.fit(X, y)
 # RandomForestClassifier().fit(X, y)
 
 #%%
-
 print("Optimal number of features : %d" % rfecv.n_features_)
 
 # Plot number of features VS. cross-validation scores
