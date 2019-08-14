@@ -45,69 +45,49 @@ from region_stats import RegionStats
 # users = pd.read_csv('ml-users.csv')
 users = pd.read_csv('users_one_mission.csv')
 users = users.set_index('user_id')
-#%%
-# Users w/ accuracies below 65% and are not in neighorhoods without sidewalks
-overall_bad_users = ['1353d168-ab49-4474-ae8a-213eb2dafab5', 
-                     '35872a6c-d171-40d9-8e66-9242b835ea71',
-                     '6809bd6e-605f-4861-bc49-32e52c88c675', 
-                     '939b6faa-0b57-4160-bcc2-d11fd2b69d9f',
-                     'f5314ef9-3877-438c-ba65-ee2a2bbbf7f5']
-
-no_sidewalk_region_users = ['54c77d0f-fc8f-4497-84d3-5e336047b17e',
-                            '86d26e9d-010f-4802-88ba-680ae0a8e20d',
-                            '8a471c0f-fa81-4c57-9b65-bd04a92c6a5e',
-                            'bca24c1a-a6b1-4625-ab8e-9ff8693022d7',
-                            'ec15a589-dd14-4513-a43e-8c06e55f4c71']
-
-good_users = ['0e1ae564-6d72-4670-98e4-71369cc5ab26',
-            '2d9009b3-55d5-4aa8-a17a-a7c80afc4d51',
-            '715af4d8-0f17-47c4-99c6-7ef92d94803a',
-            '7b1596af-14d4-4f2b-9e4e-71b1884db836',
-            '87833d72-b357-4e2c-81cd-23f58ff04c59',
-            '9005a64a-fa73-4c84-b08b-b61eece1b9b7',
-            '9b595ba6-529b-4d37-93d7-dd189184e15a',
-            'ac272eb8-3bb3-4260-9960-8e6c463f3867',
-            'af812204-1521-4c42-bf88-4baaaffe3f06',
-            'bb64c416-b0bb-4a5b-b369-00f2a56fea3a',
-            'bf16418a-4c99-4fd6-99c6-7e8b40fbe17b',
-            'c7190807-b56e-40c5-b96e-49dc8368328c']
-
-def user_class(user_id):
-    if user_id in overall_bad_users:
-        return 'bad'
-    elif user_id in no_sidewalk_region_users:
-        return 'region'
-    elif user_id in good_users:
-        return 'good'
-    return 'undefined'
-
-users = users.join(users.apply(lambda x: user_class(x.name), axis=1).rename('class'))
-
-#%%
+##%%
 point_labels = pd.read_csv('sidewalk-seattle-label_point.csv')
 point_labels.set_index('label_id', inplace=True)
-#%%
+##%%
 # label_correctness = pd.read_csv('ml-label-correctness.csv')
 label_correctness = pd.read_csv('ml-label-correctness-one-mission.csv')
-#%%
+##%%
 label_correctness.set_index('label_id', inplace=True)
-#%%
+##%%
 label_correctness = label_correctness.join(point_labels)
-#%%
+##%%
 label_correctness = label_correctness[['user_id', 'label_type', 
     'correct', 'sv_image_x', 'sv_image_y', 'canvas_x', 'canvas_y', 
     'heading', 'pitch', 'zoom', 'lat', 'lng']]
 
-#%%
-users_for_analysis = users.index[users['labels_validated'] > 26]
+##%%
+users_for_analysis = users.index[users['labels_validated'] > 27]
 label_correctness = label_correctness[label_correctness['user_id'].isin(users_for_analysis)]
 users = users.loc[users_for_analysis]
-#%%
+##%%
 label_correctness.update(label_correctness['correct'][~pd.isna(label_correctness['correct'])] == 't')
-#%%
+##%%
 label_type_encoder = OrdinalEncoder()
-#%%
+##%%
 label_correctness['label_type'] = label_type_encoder.fit_transform(label_correctness[['label_type']])
+
+#%% [markdown]
+# # Intersection Proximity
+
+#%%
+def get_proximity_info(label):
+    try:
+        distance, middleness = compute_proximity(label.lat, label.lng, cache=True)
+    except Exception:
+        distance = -1
+        middleness = -1
+    
+    return pd.Series({
+        'proximity_distance': distance,
+        'proximity_middleness': middleness
+    })
+
+label_correctness = label_correctness.join(label_correctness.apply(get_proximity_info, axis=1))
 
 #%% [markdown]
 # # CV Analysis
@@ -255,7 +235,7 @@ def prob_hist(probabilities, n_bins=5):
 
     # return hist / np.sum(hist)
     # return hist
-    return [np.mean(probabilities), np.std(probabilities), np.mean(probabilities > 0.8),
+    return [np.mean(probabilities), np.std(probabilities),
         np.percentile(probabilities, 25), np.percentile(probabilities, 50),
         np.percentile(probabilities, 75)]
 def dearray(array):
@@ -271,7 +251,7 @@ user_quality_features.set_index('user_id', inplace=True)
 #%%
 features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
 
-scaler = StandardScaler()
+proportion_labels = 0.1
 comparisons = pd.DataFrame()
 split_num = 0
 np.random.seed(0)
@@ -279,9 +259,11 @@ np.random.seed(0)
 for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).split(users.index):
     X_train, X_test = users.index[train_index], users.index[test_index]
     y_train, y_test = users['accuracy'][train_index], users['accuracy'][test_index]
-    #%%
-    # X_train, X_test, y_train, y_test = train_test_split(users.index, users['accuracy'], random_state=1, test_size=0.2)
-    #%%
+
+    mask = np.random.permutation(np.arange(len(X_train)))
+    users_labels_train = X_train[mask[:int(proportion_labels * len(mask))]]
+    users_labels_test = X_train[mask[int(proportion_labels * len(mask)):]]
+
     train_labels = label_correctness[label_correctness['user_id'].isin(X_train)]
     test_labels = label_correctness[label_correctness['user_id'].isin(X_test)]
     #%%
@@ -297,31 +279,19 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
     # clf_accuracy = BalancedBaggingClassifier(n_jobs=-1, random_state=0, n_estimators=100)
     clf_accuracy = BalancedBaggingClassifier(random_state=0, n_jobs=-1, n_estimators=20)
     # clf = BalancedRandomForestClassifier(random_state=0)  
-     #%%
-    mask = np.random.permutation(train_labels.index.values)
-    mask_labels = mask[:int(len(mask) * 0.16)]
-    mask_accuracy = mask[int(len(mask) * 0.16):]
     
-      # TODO don't eliminate all nans
-    # def get_proximity_info(label):
-    #     try:
-    #         distance, middleness = compute_proximity(label.lat, label.lng, cache=True)
-    #     except Exception:
-    #         distance = -1
-    #         middleness = -1
-        
-    #     return pd.Series({
-    #         'proximity_distance': distance,
-    #         'proximity_middleness': middleness
-    #     })
-
-    #   clf_labels_training = clf_labels_training.join    clf_labels_training.apply(get_proximity_info, axis=1))
+    # TODO don't eliminate all nans
 
     #%%
     # clf_labels.fit(train_labels[features], train_labels['correct'].astype(int))
-    clf_labels.fit(train_labels.loc[mask_labels][features], train_labels.loc[mask_labels]['correct'].astype(int))
-    train_labels = train_labels.join(pd.Series(data=clf_labels.predict_proba(train_labels.loc[mask_accuracy][features])[:, 1], index=mask_accuracy).rename('prob'), how='outer')
-    prob_hist_predictions = pd.DataFrame(train_labels.loc[mask_accuracy].groupby('user_id').apply(lambda x: prob_hist(x['prob'].values)).rename('prob'))
+    clf_labels.fit(train_labels[train_labels['user_id'].isin(users_labels_train)][features], 
+        train_labels[train_labels['user_id'].isin(users_labels_train)]['correct'].astype(int))
+    train_labels = train_labels.join(pd.Series(
+        data=clf_labels.predict_proba(train_labels[train_labels['user_id'].isin(users_labels_test)][features])[:, 1], 
+        index=train_labels[train_labels['user_id'].isin(users_labels_test)].index).rename('prob'), how='outer')
+    prob_hist_predictions = pd.DataFrame(train_labels[train_labels['user_id'].isin(users_labels_test)]
+        .groupby('user_id').apply(lambda x:\
+        prob_hist(x['prob'].values)).rename('prob'))
     prob_hist_predictions = prob_hist_predictions.join(user_quality_features)
     clf_accuracy.fit(np.concatenate((dearray(prob_hist_predictions['prob']), 
         prob_hist_predictions.drop(columns='prob').values), axis=1), 
@@ -361,7 +331,7 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     split_num += 1
 
-    sys.stderr.write(f'{split_num} / 5\n')
+    # sys.stderr.write(f'{split_num} / 5\n')
 
 comparisons['accuracy'] = (comparisons['accuracy'] > 65).astype(int)
 
@@ -393,8 +363,8 @@ plt.show()
 #%%
 mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
 plt.figure()
-plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 1)], alpha=0.5, label='good')
-plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 0)], alpha=0.5, label='bad')
+vals_correct, bins, _ = plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 1)], alpha=0.5, label='good', bins=30)
+vals_incorrect,_,_ = plt.hist(comparisons['predicted'][mask & (comparisons['accuracy'] == 0)], alpha=0.5, label='bad', bins=bins)
 plt.xlabel('predicted probability that the user is good')
 plt.ylabel('count')
 plt.legend()
