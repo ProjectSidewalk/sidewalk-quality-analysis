@@ -249,7 +249,7 @@ user_quality_features = pd.read_csv('all_users.csv')
 user_quality_features.set_index('user_id', inplace=True)
 
 #%%
-features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']
+features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng',]
 
 proportion_labels = 0.1
 comparisons = pd.DataFrame()
@@ -284,24 +284,24 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
 
     #%%
     # clf_labels.fit(train_labels[features], train_labels['correct'].astype(int))
-    clf_labels.fit(train_labels[train_labels['user_id'].isin(users_labels_train)][features], 
+    clf_labels.fit(train_labels[train_labels['user_id'].isin(users_labels_train)][features].values[:, rfe_labels_mask], 
         train_labels[train_labels['user_id'].isin(users_labels_train)]['correct'].astype(int))
     train_labels = train_labels.join(pd.Series(
-        data=clf_labels.predict_proba(train_labels[train_labels['user_id'].isin(users_labels_test)][features])[:, 1], 
+        data=clf_labels.predict_proba(train_labels[train_labels['user_id'].isin(users_labels_test)][features].values[:, rfe_labels_mask])[:, 1], 
         index=train_labels[train_labels['user_id'].isin(users_labels_test)].index).rename('prob'), how='outer')
     prob_hist_predictions = pd.DataFrame(train_labels[train_labels['user_id'].isin(users_labels_test)]
         .groupby('user_id').apply(lambda x:\
         prob_hist(x['prob'].values)).rename('prob'))
     prob_hist_predictions = prob_hist_predictions.join(user_quality_features)
     clf_accuracy.fit(np.concatenate((dearray(prob_hist_predictions['prob']), 
-        prob_hist_predictions.drop(columns='prob').values), axis=1), 
+        prob_hist_predictions.drop(columns='prob').values), axis=1)[:, rfe_accuracy_mask], 
         (y_train.loc[prob_hist_predictions.index] > 65).astype(int))
     #%%
     # Probabililty correct
     useful_test = test_labels[~pd.isna(test_labels[features]).any(axis=1)].copy()  # TODO don't eliminate all nans
     # useful_test[features] = scaler.transform(useful_test[features])
     # useful_test = useful_test.join(useful_test.apply(get_proximity_info, axis=1))
-    useful_test.loc[:, 'prob'] = clf_labels.predict_proba(useful_test[features])[:, 1]
+    useful_test.loc[:, 'prob'] = clf_labels.predict_proba(useful_test[features].values[:, rfe_labels_mask])[:, 1]
 
     # a = useful_test.groupby('user_id').apply(lambda x: prob_hist(x['prob']))
     # break
@@ -316,8 +316,8 @@ for train_index, test_index in KFold(n_splits=5, shuffle=True, random_state=0).s
         
         # selected_probs = probs[~np.isnan(probs)]
         # return np.mean(selected_probs)
-        return clf_accuracy.predict_proba([np.concatenate((prob_hist(probs), features))])[:, 1][0]
-        # return clf_accuracy.predict([np.concatenate((prob_hist(probs), features))])[0]
+        # return clf_accuracy.predict_proba([np.concatenate((prob_hist(probs), features))])[:, 1][0]
+        return clf_accuracy.predict([np.concatenate((prob_hist(probs), features))[rfe_accuracy_mask]])[0]
 
     mean_probs = useful_test.groupby('user_id').apply(lambda x: predict_accuracy(x['prob'].values, user_quality_features.loc[x.name])).rename('predicted')
 
@@ -347,12 +347,29 @@ mask = ~(pd.isna(label_correctness[features]).any(axis=1) | pd.isna(label_correc
 X = label_correctness[features][mask]
 y = label_correctness['correct'][mask].astype(int)
 rfecv = RFECV(estimator=RandomForestClassifier(), step=1, cv=StratifiedKFold(5),
-              scoring='accuracy')
+              scoring='precision')
 rfecv.fit(X, y)
+rfe_labels_mask = rfecv.support_
 # RandomForestClassifier().fit(X, y)
 
+#%% 
+# Feature Selection
+mask = ~(pd.isna(label_correctness[features]).any(axis=1) | pd.isna(label_correctness['correct']))
+X = np.concatenate((dearray(prob_hist_predictions['prob']), 
+        prob_hist_predictions.drop(columns='prob').values), axis=1)
+
+y = (y_train.loc[prob_hist_predictions.index] > 65).astype(int)
+rfecv = RFECV(estimator=RandomForestClassifier(), step=1, cv=StratifiedKFold(5), scoring='f1')
+rfecv.fit(X, y)
+rfe_accuracy_mask = rfecv.support_
+
+# RandomForestClassifier().fit(X, y)
+
+
+#%%
 #%%
 print("Optimal number of features : %d" % rfecv.n_features_)
+print("Optimal number of features : %s" % str(rfecv.support_))
 
 # Plot number of features VS. cross-validation scores
 plt.figure()
@@ -360,6 +377,7 @@ plt.xlabel("Number of features selected")
 plt.ylabel("Cross validation score (nb of correct classifications)")
 plt.plot(range(1, len(rfecv.grid_scores_) + 1), rfecv.grid_scores_)
 plt.show()
+
 #%%
 mask = ~pd.isna(comparisons[['accuracy', 'predicted']]).any(axis=1)
 plt.figure()
