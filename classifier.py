@@ -78,20 +78,20 @@ def extract_user_features(filename):
         users_features_header.append(counting_features[index] + 'Standard Deviation per Pano')
         users_features_header.append(counting_features[index] + 'Mean per Mission')
         users_features_header.append(counting_features[index] + 'Standard Deviation per Mission')
-        users_features.append(df_user['pitch'].mean())
-        users_features_header.append('Pitch')
-        df_grouped = df_user.groupby(['gsv_panorama_id'])
-        current_heading = []
-        for current, group in df_grouped:
-            current_heading.append(group['heading'].max() - group['heading'].min())
-            full_heading_count = 0
-            range = group['heading'].max() - group['heading'].min()
-        if range >= 350:
-            full_heading_count += 1
-        users_features.append(sum(current_heading) / float(len(current_heading))) 
-        users_features_header.append('Average Heading Range')
-        users_features.append(full_heading_count / float(user_panos[entry]))
-        users_features_header.append('Panos w/ over 350 Degrees seen')
+    users_features.append(df_user['pitch'].mean())
+    users_features_header.append('Pitch')
+    df_grouped = df_user.groupby(['gsv_panorama_id'])
+    current_heading = []
+    for current, group in df_grouped:
+        current_heading.append(group['heading'].max() - group['heading'].min())
+        full_heading_count = 0
+        range = group['heading'].max() - group['heading'].min()
+    if range >= 350:
+        full_heading_count += 1
+    users_features.append(sum(current_heading) / float(len(current_heading))) 
+    users_features_header.append('Average Heading Range')
+    users_features.append(full_heading_count / float(user_panos[entry]))
+    users_features_header.append('Panos w/ over 350 Degrees seen')
     
     user_id = df_user.iloc[0]['user_id']
     return users_features, users_features_header, user_id
