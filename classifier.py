@@ -30,11 +30,12 @@ from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import multiprocessing as mp
 import warnings
 import intersection_proximity
-from region_stats import RegionStats
+# from region_stats import RegionStats
 import scipy
 
 from sklearn.base import BaseEstimator
 
+# List of the features using label data
 features = ['label_type', 'sv_image_y', 'canvas_x', 'canvas_y', 'heading', 'pitch', 'zoom', 'lat', 'lng']# 'proximity_distance', 'proximity_middleness', 'CLASS_DESC', 'ZONEID']
 
 proportion_labels = 0.35
@@ -42,6 +43,7 @@ comparisons = pd.DataFrame()
 split_num = 0
 np.random.seed(0)
 
+# Calculates the mean, standard deviation, and several percential of the model's prediction
 def prob_hist(probabilities, n_bins=5):
     return [np.mean(probabilities), np.std(probabilities),
         np.percentile(probabilities, 25), np.percentile(probabilities, 50),
@@ -50,9 +52,13 @@ def prob_hist(probabilities, n_bins=5):
 def dearray(array):
     return np.array([list(l) for l in array])
 
-   
-def extract_user_features(filename):
+# Creates the interaction feature of the users inputted to be tested against the model
+# counting_features is the title of the interaction data features
+# counting_features_actions is the name that the action is logged under by the website and corresponds
+# to those in the counting_features list
+def extract_user_features(filename, panos_file, user_name):
     df_user = pd.read_csv(filename)
+    user_panos = pd.read_csv(panos_file)
     info = df_user.groupby(('mission_id', 'gsv_panorama_id'))
     counting_features_action = ['LowLevelEvent_mousedown', 'ContextMenu_TagAdded',
                         'LabelingCanvas_FinishLabeling', 'RemoveLabel',
@@ -66,18 +72,18 @@ def extract_user_features(filename):
     for index, feature in enumerate(counting_features_action):
         by_pano = df_user.groupby(('mission_id', 'gsv_panorama_id')).apply(lambda x: sum(x['action'] == feature))
         pano_mean = by_pano.mean()
-        pano_std = by_pano.std()
+#         pano_std = by_pano.std()
         by_mission = df_user.groupby('mission_id').apply(lambda x: sum(x['action'] == feature))
         mission_mean = by_mission.mean()
-        mission_std = by_mission.std()
+#         mission_std = by_mission.std()
         users_features.append(pano_mean)
-        users_features.append(pano_std)
+#         users_features.append(pano_std)
         users_features.append(mission_mean)
-        users_features.append(mission_std)
+#         users_features.append(mission_std)
         users_features_header.append(counting_features[index] + 'Mean per Pano')
-        users_features_header.append(counting_features[index] + 'Standard Deviation per Pano')
+#         users_features_header.append(counting_features[index] + 'Standard Deviation per Pano')
         users_features_header.append(counting_features[index] + 'Mean per Mission')
-        users_features_header.append(counting_features[index] + 'Standard Deviation per Mission')
+#         users_features_header.append(counting_features[index] + 'Standard Deviation per Mission')
     users_features.append(df_user['pitch'].mean())
     users_features_header.append('Pitch')
     df_grouped = df_user.groupby(['gsv_panorama_id'])
@@ -90,13 +96,14 @@ def extract_user_features(filename):
         full_heading_count += 1
     users_features.append(sum(current_heading) / float(len(current_heading))) 
     users_features_header.append('Average Heading Range')
-    users_features.append(full_heading_count / float(user_panos[entry]))
+    index = list(user_panos['Unnamed: 0']).index(user_name)
+    users_features.append(full_heading_count / float(user_panos['panos seen'][index]))
     users_features_header.append('Panos w/ over 350 Degrees seen')
     
     user_id = df_user.iloc[0]['user_id']
     return users_features, users_features_header, user_id
 
-
+# Gathers all of the label data from all labels of the inputted users to be tested against the model 
 def extract_label_features(point_labels_file, label_correctness_file, population_density_file='data_seattle.geojson', zone_type_file='Zoning_Detailed.geojson'):
     point_labels = pd.read_csv(point_labels_file)
     point_labels.set_index('label_id', inplace=True)
@@ -144,7 +151,7 @@ def extract_label_features(point_labels_file, label_correctness_file, population
 class UserQualityRegressor(BaseEstimator):
     def __init__(self):
         pass
-    
+#   Trains the ml model using the ineraction & label data of all users who have atleast 25 labels validated
     def fit(self, label_correctness_file, point_labels_file, users_file, user_quality_features_file='all_users.csv'):
         users = pd.read_csv(users_file)
         users = users.set_index('user_id')
@@ -152,12 +159,15 @@ class UserQualityRegressor(BaseEstimator):
 
         users_for_training = users[users['labels_validated'] > 25].index
         self.label_correctness = extract_label_features(point_labels_file, label_correctness_file)
-        
+#  Splits the users into training & testing groups
         user_quality_features = pd.read_csv(user_quality_features_file).set_index('user_id')
+        half = int(len(users_for_training) / 2)
+        users_labels_train = users_for_training[:half]
+        users_labels_test = users_for_training[half:]
    
-        mask = np.random.permutation(np.arange(len(users_for_training)))
-        users_labels_train = users_for_training[mask[:int(proportion_labels * len(mask))]]
-        users_labels_test = users_for_training[mask[int(proportion_labels * len(mask)):]]
+#         mask = np.random.permutation(np.arange(len(users_for_training)))
+#         users_labels_train = users_for_training[mask[:int(proportion_labels * len(mask))]]
+#         users_labels_test = users_for_training[mask[int(proportion_labels * len(mask)):]]
 
         train_labels = self.label_correctness.copy()
         train_labels = train_labels[~pd.isna(train_labels['correct'])]
@@ -179,7 +189,7 @@ class UserQualityRegressor(BaseEstimator):
 
         self.clf_labels.fit(train_labels[train_labels['user_id'].isin(users_labels_train)][features].values[:, self.rfe_labels.support_], 
             train_labels[train_labels['user_id'].isin(users_labels_train)]['correct'].astype(int))
-
+      
         train_labels = train_labels.join(pd.Series(
             data=self.clf_labels.predict_proba(train_labels[train_labels['user_id'].isin(users_labels_test)][features].values[:, self.rfe_labels.support_])[:, 1], 
             index=train_labels[train_labels['user_id'].isin(users_labels_test)].index).rename('prob'), how='outer')
@@ -198,18 +208,19 @@ class UserQualityRegressor(BaseEstimator):
         self.clf_accuracy.fit(np.concatenate((dearray(prob_hist_predictions['prob']), 
             prob_hist_predictions.drop(columns='prob').values), axis=1)[:, self.rfe_accuracy.support_], 
             y_train.loc[prob_hist_predictions.index])
+   
     
-            
+# Creates the prediction of the given user's accuracy based off of their passed in label & interaction data
     def __predict_accuracy(self, probs, user_features):
-        return self.clf_accuracy.predict([np.concatenate((prob_hist(probs), user_features))[self.rfe_accuracy.support_]])[0]    
-
-    def predict_one_user(self, filename, label_correctness_file, point_labels_file):
-        user_features, user_features_header, user_id = extract_user_features(filename)
+        return self.clf_accuracy.predict([np.concatenate((prob_hist(probs), user_features))[self.rfe_accuracy.support_]])[0]
+# Takes in all the names of the files and creates a prediction of the given user's accuracy
+    def predict_one_user(self, filename, label_correctness_file, point_labels_file, panos_file, user_name):
+        user_features, user_features_header, user_id = extract_user_features(filename, panos_file, user_name)
         label_correctness = extract_label_features(point_labels_file, label_correctness_file)
+        label_correctness = label_correctness[~(pd.isna(label_correctness[features]).any(axis=1))]
         label_correctness = label_correctness[label_correctness['user_id'] == user_id]
-        
-        probs = self.clf_labels.predict(label_correctness[features])
-        return self.__predict_accuracy(probs, features)    
+        probs = self.clf_labels.predict(label_correctness[features].values[:, self.rfe_labels.support_])
+        return self.__predict_accuracy(probs, user_features)
             
 
     def save(self, filename):
