@@ -1,5 +1,5 @@
 # sidewalk-quality-analysis
-An analysis of Project Sidewalk user quality based on interaction logs
+In this project, we aim to infer the quality of Project Sidewalk users based on their interactions with our system--both low-level interactions like mouse clicks and moves--as well as higher-level, more application related interactions (amount of panning on a street view image, etc.)
 
 Additional files you will need for the classifier (sidewalk-user-quality-analysis-neil.ipynb):
 * `users_one_mission.csv`: CSV of quality information for users with at least one mission
