@@ -26,29 +26,75 @@ n_received_surface_problem_agree,int,>=0,"Number of surface problem labels place
 n_received_surface_problem_disagree,int,>=0,"Number of surface problem labels placed by this user that other users marked as agree through validations. For labels with multiple validations, majority vote is used. If no result has a majority, it is added to the count of ties."
 n_received_surface_problem_unsure,int,>=0,"Number of surface problem labels placed by this user that other users marked as agree through validations. For labels with multiple validations, majority vote is used. If no result has a majority, it is added to the count of ties."
 n_received_surface_problem_tie,int,>=0,"Number of surface problem labels placed by this user that received multiple validations from other users, where no result has a majority."
-audit_mission_count,int,>=0,Number of audit missions this user has completed.
-validation_mission_count,int,>=0,Number of validation missions this user has completed.
+n_validation_given,int,>=0,Number of labels (4 main label types) validated by this user. Excludes validations through LabelMap.
+n_given_agree,int,>=0,Number of labels (4 main label types) validated by this user that they marked as agree. Excludes validations through LabelMap.
+n_given_disagree,int,>=0,Number of labels (4 main label types) validated by this user that they marked as disagree. Excludes validations through LabelMap.
+n_given_unsure,int,>=0,Number of labels (4 main label types) validated by this user that they marked as unsure. Excludes validations through LabelMap.
+n_given_curb_ramp,int,>=0,Number of curb ramp labels validated by this user. Excludes validations through LabelMap.
+n_given_curb_ramp_agree,int,>=0,Number of curb ramp labels validated by this user that they marked as agree. Excludes validations through LabelMap.
+n_given_curb_ramp_disagree,int,>=0,Number of curb ramp labels validated by this user that they marked as disagree. Excludes validations through LabelMap.
+n_given_curb_ramp_unsure,int,>=0,Number of curb ramp labels validated by this user that they marked as unsure. Excludes validations through LabelMap.
+n_given_missing_curb_ramp,int,>=0,Number of missing curb ramp labels validated by this user. Excludes validations through LabelMap.
+n_given_missing_curb_ramp_agree,int,>=0,Number of missing curb ramp labels validated by this user that they marked as agree. Excludes validations through LabelMap.
+n_given_missing_curb_ramp_disagree,int,>=0,Number of missing curb ramp labels validated by this user that they marked as disagree. Excludes validations through LabelMap.
+n_given_missing_curb_ramp_unsure,int,>=0,Number of missing curb ramp labels validated by this user that they marked as unsure. Excludes validations through LabelMap.
+n_given_obstacle,int,>=0,Number of obstacle labels validated by this user. Excludes validations through LabelMap.
+n_given_obstacle_agree,int,>=0,Number of obstacle labels validated by this user that they marked as agree. Excludes validations through LabelMap.
+n_given_obstacle_disagree,int,>=0,Number of obstacle labels validated by this user that they marked as disagree. Excludes validations through LabelMap.
+n_given_obstacle_unsure,int,>=0,Number of obstacle labels validated by this user that they marked as unsure. Excludes validations through LabelMap.
+n_given_surface_problem,int,>=0,Number of surface problem labels validated by this user. Excludes validations through LabelMap.
+n_given_surface_problem_agree,int,>=0,Number of surface problem labels validated by this user that they marked as agree. Excludes validations through LabelMap.
+n_given_surface_problem_disagree,int,>=0,Number of surface problem labels validated by this user that they marked as disagree. Excludes validations through LabelMap.
+n_given_surface_problem_unsure,int,>=0,Number of surface problem labels validated by this user that they marked as unsure. Excludes validations through LabelMap.
+n_audit_mission,int,>=0,Number of audit missions this user has completed.
+n_validation_mission,int,>=0,Number of validation missions this user has completed.
 high_quality_manual,bool,,"False if Mikey manually reviewed their use of the tool and found it to be particularly bad; true if he found it to be of very high quality. This is mostly used when manually evaluating the performance of turkers, usually because the turker was either clearly not performing the work in good faith, they clearly rushed through the task and missed many label, they did not have a good understanding of the task (likely because of cultural/language barriers or not carefully reading the instructions), or some combination of the three. N/A for most users."
 meters_audited,real,>=0,Distance the user has audited in meters.
 n_label,int,>=0,"Number of labels placed by this user, excluding the tutorial and deleted labels."
-n_label_with_severity,int,>=0,"Number of labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 n_label_with_tag,int,>=0,"Number of labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_label_with_severity,int,>=0,"Number of labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
+label_severity_min,int,"[1,5]",Min severity from labels placed by this user.
+label_severity_max,int,"[1,5]",Max severity from labels placed by this user.
+label_severity_mean,real,"[1,5]",Mean severity from labels placed by this user.
+label_severity_sd,real,,Standard deviation of severity from labels placed by this user.
 n_curb_ramp,int,>=0,"Number of curb ramp labels placed by this user, excluding the tutorial and deleted labels."
-n_curb_ramp_with_severity,int,>=0,"Number of curb ramp labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 n_curb_ramp_with_tag,int,>=0,"Number of curb ramp labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_curb_ramp_with_severity,int,>=0,"Number of curb ramp labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
+curb_ramp_severity_min,int,"[1,5]",Min severity from curb ramp labels placed by this user.
+curb_ramp_severity_max,int,"[1,5]",Max severity from curb ramp labels placed by this user.
+curb_ramp_severity_mean,real,"[1,5]",Mean severity from curb ramp labels placed by this user.
+curb_ramp_severity_sd,real,,Standard deviation of severity from curb ramp labels placed by this user.
 n_missing_curb_ramp,int,>=0,"Number of missing curb ramp labels placed by this user, excluding the tutorial and deleted labels."
-n_missing_curb_ramp_with_severity,int,>=0,"Number of missing curb ramp labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 n_missing_curb_ramp_with_tag,int,>=0,"Number of missing curb ramp labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_missing_curb_ramp_with_severity,int,>=0,"Number of missing curb ramp labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
+missing_curb_ramp_severity_min,int,"[1,5]",Min severity from missing curb ramp labels placed by this user.
+missing_curb_ramp_severity_max,int,"[1,5]",Max severity from missing curb ramp labels placed by this user.
+missing_curb_ramp_severity_mean,real,"[1,5]",Mean severity from missing curb ramp labels placed by this user.
+missing_curb_ramp_severity_sd,real,,Standard deviation of severity from missing curb ramp labels placed by this user.
 n_obstacle,int,>=0,"Number of obstacle labels placed by this user, excluding the tutorial and deleted labels."
-n_obstacle_with_severity,int,>=0,"Number of obstacle labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 n_obstacle_with_tag,int,>=0,"Number of obstacle labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_obstacle_with_severity,int,>=0,"Number of obstacle labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
+obstacle_severity_min,int,"[1,5]",Min severity from obstacle labels placed by this user.
+obstacle_severity_max,int,"[1,5]",Max severity from obstacle labels placed by this user.
+obstacle_severity_mean,real,"[1,5]",Mean severity from obstacle labels placed by this user.
+obstacle_severity_sd,real,,Standard deviation of severity from obstacle labels placed by this user.
 n_surface_problem,int,>=0,"Number of surface problem labels placed by this user, excluding the tutorial and deleted labels."
-n_surface_problem_with_severity,int,>=0,"Number of surface problem labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 n_surface_problem_with_tag,int,>=0,"Number of surface problem labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_surface_problem_with_severity,int,>=0,"Number of surface problem labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
+surface_problem_severity_min,int,"[1,5]",Min severity from surface problem labels placed by this user.
+surface_problem_severity_max,int,"[1,5]",Max severity from surface problem labels placed by this user.
+surface_problem_severity_mean,real,"[1,5]",Mean severity from surface problem labels placed by this user.
+surface_problem_severity_sd,real,,Standard deviation of severity from surface problem labels placed by this user.
 n_no_sidewalk,int,>=0,"Number of no sidewalk labels placed by this user, excluding the tutorial and deleted labels."
-n_no_sidewalk_with_severity,int,>=0,"Number of no sidewalk labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 n_no_sidewalk_with_tag,int,>=0,"Number of no sidewalk labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_no_sidewalk_with_severity,int,>=0,"Number of no sidewalk labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
+no_sidewalk_severity_min,int,"[1,5]",Min severity from no sidewalk labels placed by this user.
+no_sidewalk_severity_max,int,"[1,5]",Max severity from no sidewalk labels placed by this user.
+no_sidewalk_severity_mean,real,"[1,5]",Mean severity from no sidewalk labels placed by this user.
+no_sidewalk_severity_sd,real,,Standard deviation of severity from no sidewalk labels placed by this user.
 tutorial_minutes,real,>=0,"Minutes this user spent completing the tutorial for the first time. If the user does not interact with the tool for 5 or more minutes during the tutorial, that time is subtracted. N/A if the user skipped the tutorial."
 tutorial_error_count,int,0-12,"Number of mistakes this user made during their first time completing the tutorial. N/A if the user skipped the tutorial. The possible mistakes are placing a label too far from the correct location, giving the wrong severity rating, or adding an incorrect tag. We only count the severity and tag mistakes once per label, and we only count placing a label in the wrong location once across the entire tutorial. In the tutorial, there are 7 labels requiring severity and 4 labels requiring tags. Giving us a max error count of 7 (sev) + 4 (tag) + 1 (location) = 12."
-keyboard_interaction_count,int,>=0,Number of LowLevelEvent_keyup actions logged by this user by this user in the audit interface. Should be correlated to use of keyboard shortcuts by this user.
-pan_interaction_count,int,>=0,Number of POV_Changed_keyup actions logged by this user by this user in the audit interface. Should be correlated to the amount of panning done by this user.
+n_pano_visited,int,>=0,Number of unique panoramas visited by this user through the audit interface. Uses the PanoId_Changed event.
+n_pano_with_label,int,>=0,Number of unique panoramas that this user has placed a label on.
+n_keyboard_interaction,int,>=0,Number of LowLevelEvent_keyup actions logged by this user by this user in the audit interface. Should be correlated to use of keyboard shortcuts by this user.
+n_pan_interaction,int,>=0,Number of POV_Changed_keyup actions logged by this user by this user in the audit interface. Should be correlated to the amount of panning done by this user.
