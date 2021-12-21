@@ -52,6 +52,7 @@ high_quality_manual,bool,,"False if Mikey manually reviewed their use of the too
 meters_audited,real,>=0,Distance the user has audited in meters.
 n_label,int,>=0,"Number of labels placed by this user, excluding the tutorial and deleted labels."
 n_label_with_tag,int,>=0,"Number of labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_label_with_description,int,>=0,"Number of labels with a description added by this user, excluding the tutorial and deleted labels."
 n_label_with_severity,int,>=0,"Number of labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 label_severity_min,int,"[1,5]",Min severity from labels placed by this user.
 label_severity_max,int,"[1,5]",Max severity from labels placed by this user.
@@ -59,6 +60,7 @@ label_severity_mean,real,"[1,5]",Mean severity from labels placed by this user.
 label_severity_sd,real,,Standard deviation of severity from labels placed by this user.
 n_curb_ramp,int,>=0,"Number of curb ramp labels placed by this user, excluding the tutorial and deleted labels."
 n_curb_ramp_with_tag,int,>=0,"Number of curb ramp labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_curb_ramp_with_description,int,>=0,"Number of curb ramp labels with a description added by this user, excluding the tutorial and deleted labels."
 n_curb_ramp_with_severity,int,>=0,"Number of curb ramp labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 curb_ramp_severity_min,int,"[1,5]",Min severity from curb ramp labels placed by this user.
 curb_ramp_severity_max,int,"[1,5]",Max severity from curb ramp labels placed by this user.
@@ -66,6 +68,7 @@ curb_ramp_severity_mean,real,"[1,5]",Mean severity from curb ramp labels placed 
 curb_ramp_severity_sd,real,,Standard deviation of severity from curb ramp labels placed by this user.
 n_missing_curb_ramp,int,>=0,"Number of missing curb ramp labels placed by this user, excluding the tutorial and deleted labels."
 n_missing_curb_ramp_with_tag,int,>=0,"Number of missing curb ramp labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_missing_curb_ramp_with_description,int,>=0,"Number of missing curb ramp labels with a description added by this user, excluding the tutorial and deleted labels."
 n_missing_curb_ramp_with_severity,int,>=0,"Number of missing curb ramp labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 missing_curb_ramp_severity_min,int,"[1,5]",Min severity from missing curb ramp labels placed by this user.
 missing_curb_ramp_severity_max,int,"[1,5]",Max severity from missing curb ramp labels placed by this user.
@@ -73,6 +76,7 @@ missing_curb_ramp_severity_mean,real,"[1,5]",Mean severity from missing curb ram
 missing_curb_ramp_severity_sd,real,,Standard deviation of severity from missing curb ramp labels placed by this user.
 n_obstacle,int,>=0,"Number of obstacle labels placed by this user, excluding the tutorial and deleted labels."
 n_obstacle_with_tag,int,>=0,"Number of obstacle labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_obstacle_with_description,int,>=0,"Number of obstacle labels with a description added by this user, excluding the tutorial and deleted labels."
 n_obstacle_with_severity,int,>=0,"Number of obstacle labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 obstacle_severity_min,int,"[1,5]",Min severity from obstacle labels placed by this user.
 obstacle_severity_max,int,"[1,5]",Max severity from obstacle labels placed by this user.
@@ -80,6 +84,7 @@ obstacle_severity_mean,real,"[1,5]",Mean severity from obstacle labels placed by
 obstacle_severity_sd,real,,Standard deviation of severity from obstacle labels placed by this user.
 n_surface_problem,int,>=0,"Number of surface problem labels placed by this user, excluding the tutorial and deleted labels."
 n_surface_problem_with_tag,int,>=0,"Number of surface problem labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_surface_problem_with_description,int,>=0,"Number of surface problem labels with a description added by this user, excluding the tutorial and deleted labels."
 n_surface_problem_with_severity,int,>=0,"Number of surface problem labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 surface_problem_severity_min,int,"[1,5]",Min severity from surface problem labels placed by this user.
 surface_problem_severity_max,int,"[1,5]",Max severity from surface problem labels placed by this user.
@@ -87,6 +92,7 @@ surface_problem_severity_mean,real,"[1,5]",Mean severity from surface problem la
 surface_problem_severity_sd,real,,Standard deviation of severity from surface problem labels placed by this user.
 n_no_sidewalk,int,>=0,"Number of no sidewalk labels placed by this user, excluding the tutorial and deleted labels."
 n_no_sidewalk_with_tag,int,>=0,"Number of no sidewalk labels with at least one tag placed by this user, excluding the tutorial and deleted labels."
+n_no_sidewalk_with_description,int,>=0,"Number of no sidewalk labels with a description added by this user, excluding the tutorial and deleted labels."
 n_no_sidewalk_with_severity,int,>=0,"Number of no sidewalk labels with a severity rating placed by this user, excluding the tutorial and deleted labels."
 no_sidewalk_severity_min,int,"[1,5]",Min severity from no sidewalk labels placed by this user.
 no_sidewalk_severity_max,int,"[1,5]",Max severity from no sidewalk labels placed by this user.

@@ -52,6 +52,7 @@ SELECT users.user_id,
     audited_distance.meters_audited,
     n_label,
     n_label_with_tag,
+    n_label_with_description,
     n_label_with_severity,
     label_severity_min,
     label_severity_max,
@@ -59,6 +60,7 @@ SELECT users.user_id,
     label_severity_sd,
     n_curb_ramp,
     n_curb_ramp_with_tag,
+    n_curb_ramp_with_description,
     n_curb_ramp_with_severity,
     curb_ramp_severity_min,
     curb_ramp_severity_max,
@@ -66,6 +68,7 @@ SELECT users.user_id,
     curb_ramp_severity_sd,
     n_missing_curb_ramp,
     n_missing_curb_ramp_with_tag,
+    n_missing_curb_ramp_with_description,
     n_missing_curb_ramp_with_severity,
     missing_curb_ramp_severity_min,
     missing_curb_ramp_severity_max,
@@ -73,6 +76,7 @@ SELECT users.user_id,
     missing_curb_ramp_severity_sd,
     n_obstacle,
     n_obstacle_with_tag,
+    n_obstacle_with_description,
     n_obstacle_with_severity,
     obstacle_severity_min,
     obstacle_severity_max,
@@ -80,6 +84,7 @@ SELECT users.user_id,
     obstacle_severity_sd,
     n_surface_problem,
     n_surface_problem_with_tag,
+    n_surface_problem_with_description,
     n_surface_problem_with_severity,
     surface_problem_severity_min,
     surface_problem_severity_max,
@@ -87,6 +92,7 @@ SELECT users.user_id,
     surface_problem_severity_sd,
     n_no_sidewalk,
     n_no_sidewalk_with_tag,
+    n_no_sidewalk_with_description,
     n_no_sidewalk_with_severity,
     no_sidewalk_severity_min,
     no_sidewalk_severity_max,
@@ -197,11 +203,12 @@ INNER JOIN (
     WHERE mission_type_id = 2
     GROUP BY user_id
 ) audited_distance ON users.user_id = audited_distance.user_id
--- Label counts w/ and w/out severity
+-- Label counts w/ and w/out severity, tags, and descriptions
 INNER JOIN (
     SELECT user_id,
         COUNT(label_id) AS n_label,
         COUNT(CASE WHEN valid_tags > 0 THEN 1 END) AS n_label_with_tag,
+        COUNT(CASE WHEN label_description_id IS NOT NULL THEN 1 END) AS n_label_with_description,
         COUNT(CASE WHEN label_severity_id IS NOT NULL THEN 1 END) AS n_label_with_severity,
         min(CASE WHEN label_severity_id IS NOT NULL THEN severity END) AS label_severity_min,
         max(CASE WHEN label_severity_id IS NOT NULL THEN severity END) AS label_severity_max,
@@ -209,6 +216,7 @@ INNER JOIN (
         stddev(CASE WHEN label_severity_id IS NOT NULL THEN severity END) AS label_severity_sd,
         COUNT(CASE WHEN label_type_id = 1 THEN 1 END) AS n_curb_ramp,
         COUNT(CASE WHEN label_type_id = 1 AND valid_tags > 0 THEN 1 END) AS n_curb_ramp_with_tag,
+        COUNT(CASE WHEN label_type_id = 1 AND label_description_id IS NOT NULL THEN 1 END) AS n_curb_ramp_with_description,
         COUNT(CASE WHEN label_type_id = 1 AND label_severity_id IS NOT NULL THEN 1 END) AS n_curb_ramp_with_severity,
         min(CASE WHEN label_type_id = 1 AND label_severity_id IS NOT NULL THEN severity END) AS curb_ramp_severity_min,
         max(CASE WHEN label_type_id = 1 AND label_severity_id IS NOT NULL THEN severity END) AS curb_ramp_severity_max,
@@ -216,6 +224,7 @@ INNER JOIN (
         stddev(CASE WHEN label_type_id = 1 AND label_severity_id IS NOT NULL THEN severity END) AS curb_ramp_severity_sd,
         COUNT(CASE WHEN label_type_id = 2 THEN 1 END) AS n_missing_curb_ramp,
         COUNT(CASE WHEN label_type_id = 2 AND valid_tags > 0 THEN 1 END) AS n_missing_curb_ramp_with_tag,
+        COUNT(CASE WHEN label_type_id = 2 AND label_description_id IS NOT NULL THEN 1 END) AS n_missing_curb_ramp_with_description,
         COUNT(CASE WHEN label_type_id = 2 AND label_severity_id IS NOT NULL THEN 1 END) AS n_missing_curb_ramp_with_severity,
         min(CASE WHEN label_type_id = 2 AND label_severity_id IS NOT NULL THEN severity END) AS missing_curb_ramp_severity_min,
         max(CASE WHEN label_type_id = 2 AND label_severity_id IS NOT NULL THEN severity END) AS missing_curb_ramp_severity_max,
@@ -223,6 +232,7 @@ INNER JOIN (
         stddev(CASE WHEN label_type_id = 2 AND label_severity_id IS NOT NULL THEN severity END) AS missing_curb_ramp_severity_sd,
         COUNT(CASE WHEN label_type_id = 3 THEN 1 END) AS n_obstacle,
         COUNT(CASE WHEN label_type_id = 3 AND valid_tags > 0 THEN 1 END) AS n_obstacle_with_tag,
+        COUNT(CASE WHEN label_type_id = 3 AND label_description_id IS NOT NULL THEN 1 END) AS n_obstacle_with_description,
         COUNT(CASE WHEN label_type_id = 3 AND label_severity_id IS NOT NULL THEN 1 END) AS n_obstacle_with_severity,
         min(CASE WHEN label_type_id = 3 AND label_severity_id IS NOT NULL THEN severity END) AS obstacle_severity_min,
         max(CASE WHEN label_type_id = 3 AND label_severity_id IS NOT NULL THEN severity END) AS obstacle_severity_max,
@@ -230,6 +240,7 @@ INNER JOIN (
         stddev(CASE WHEN label_type_id = 3 AND label_severity_id IS NOT NULL THEN severity END) AS obstacle_severity_sd,
         COUNT(CASE WHEN label_type_id = 4 THEN 1 END) AS n_surface_problem,
         COUNT(CASE WHEN label_type_id = 4 AND valid_tags > 0 THEN 1 END) AS n_surface_problem_with_tag,
+        COUNT(CASE WHEN label_type_id = 4 AND label_description_id IS NOT NULL THEN 1 END) AS n_surface_problem_with_description,
         COUNT(CASE WHEN label_type_id = 4 AND label_severity_id IS NOT NULL THEN 1 END) AS n_surface_problem_with_severity,
         min(CASE WHEN label_type_id = 4 AND label_severity_id IS NOT NULL THEN severity END) AS surface_problem_severity_min,
         max(CASE WHEN label_type_id = 4 AND label_severity_id IS NOT NULL THEN severity END) AS surface_problem_severity_max,
@@ -237,21 +248,23 @@ INNER JOIN (
         stddev(CASE WHEN label_type_id = 4 AND label_severity_id IS NOT NULL THEN severity END) AS surface_problem_severity_sd,
         COUNT(CASE WHEN label_type_id = 7 THEN 1 END) AS n_no_sidewalk,
         COUNT(CASE WHEN label_type_id = 7 AND valid_tags > 0 THEN 1 END) AS n_no_sidewalk_with_tag,
+        COUNT(CASE WHEN label_type_id = 7 AND label_description_id IS NOT NULL THEN 1 END) AS n_no_sidewalk_with_description,
         COUNT(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN 1 END) AS n_no_sidewalk_with_severity,
         min(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_min,
         max(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_max,
         avg(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_mean,
         stddev(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_sd
     FROM (
-        SELECT user_id, label.label_id, label.label_type_id, label_severity.label_severity_id, severity, COUNT(label_tag.label_tag_id) AS valid_tags
+        SELECT user_id, label.label_id, label.label_type_id, label_severity.label_severity_id, severity, COUNT(label_tag.label_tag_id) AS valid_tags, label_description_id
         FROM mission
         INNER JOIN label ON mission.mission_id = label.mission_id
         LEFT JOIN label_severity ON label.label_id = label_severity.label_id
         LEFT JOIN label_tag ON label.label_id = label_tag.label_id
+        LEFT JOIN label_description ON label.label_id = label_description.label_id
         WHERE tutorial = FALSE
             AND deleted = FALSE
             AND mission_type_id = 2
-        GROUP BY user_id, label.label_id, label.label_type_id, label_severity.label_severity_id, severity
+        GROUP BY user_id, label.label_id, label.label_type_id, label_severity_id, severity, label_description_id
     ) labs
     GROUP BY user_id
 ) label_severity_counts ON users.user_id = label_severity_counts.user_id
