@@ -99,16 +99,15 @@ SELECT users.user_id,
 FROM (
     SELECT user_id
     FROM (
-        SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS val_count, SUM(distance_progress) AS total_dist
+        SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS label_count, SUM(distance_progress) AS total_dist
         FROM mission
         INNER JOIN label ON mission.mission_id = label.mission_id
-        INNER JOIN label_validation ON label.label_id = label_validation.label_id
         WHERE label.deleted = FALSE
             AND label.tutorial = FALSE
             AND label.label_type_id < 5 -- 4 main label types only
         GROUP BY mission.user_id
     ) val_counts
-    WHERE val_count > 9 AND total_dist > 0
+    WHERE label_count > 9 AND total_dist > 0
 ) users
 INNER JOIN user_role ON users.user_id = user_role.user_id
 INNER JOIN role ON user_role.role_id = role.role_id
@@ -331,16 +330,15 @@ SELECT users.user_id,
 FROM (
     SELECT user_id
     FROM (
-        SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS val_count, SUM(distance_progress) AS total_dist
+        SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS label_count, SUM(distance_progress) AS total_dist
         FROM mission
         INNER JOIN label ON mission.mission_id = label.mission_id
-        INNER JOIN label_validation ON label.label_id = label_validation.label_id
         WHERE label.deleted = FALSE
             AND label.tutorial = FALSE
             AND label.label_type_id < 5 -- 4 main label types only
         GROUP BY mission.user_id
     ) val_counts
-    WHERE val_count > 9 AND total_dist > 0
+    WHERE label_count > 9 AND total_dist > 0
 ) users
 LEFT JOIN (
     SELECT user_id,
@@ -415,16 +413,15 @@ SELECT users.user_id,
 FROM (
     SELECT user_id
     FROM (
-        SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS val_count, SUM(distance_progress) AS total_dist
+        SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS label_count, SUM(distance_progress) AS total_dist
         FROM mission
         INNER JOIN label ON mission.mission_id = label.mission_id
-        INNER JOIN label_validation ON label.label_id = label_validation.label_id
         WHERE label.deleted = FALSE
             AND label.tutorial = FALSE
             AND label.label_type_id < 5 -- 4 main label types only
         GROUP BY mission.user_id
     ) val_counts
-    WHERE val_count > 9 AND total_dist > 0
+    WHERE label_count > 9 AND total_dist > 0
 ) users
 INNER JOIN (
     SELECT user_id,
@@ -474,15 +471,14 @@ INNER JOIN (
 -- USERS QUERY -- output as ml-<city-name>-users.csv
 SELECT users_with_stats.user_id, username, email
 FROM (
-    SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS val_count, SUM(distance_progress) AS total_dist
+    SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS label_count, SUM(distance_progress) AS total_dist
     FROM mission
     INNER JOIN label ON mission.mission_id = label.mission_id
-    INNER JOIN label_validation ON label.label_id = label_validation.label_id
     WHERE label.deleted = FALSE
         AND label.tutorial = FALSE
         AND label.label_type_id < 5 -- 4 main label types only
     GROUP BY mission.user_id
 ) users_with_stats
 INNER JOIN sidewalk_user ON users_with_stats.user_id = sidewalk_user.user_id
-WHERE val_count > 9 AND total_dist > 0
+WHERE label_count > 9 AND total_dist > 0
 ORDER BY users_with_stats.user_id;
