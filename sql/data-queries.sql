@@ -1,31 +1,31 @@
 -- The big query with most of the data! Output as ml-<city-name>-stats.csv
 SELECT users.user_id,
     CASE WHEN role.role = 'Anonymous' THEN 'Anonymous' WHEN role.role = 'Registered' THEN 'Registered' WHEN role.role = 'Turker' THEN 'Turker' ELSE 'Researcher' END AS role,
-    COALESCE(n_validation_received, 0) AS n_validation_received,
-    COALESCE(n_received_curb_ramp_agree + n_received_missing_curb_ramp_agree + n_received_obstacle_agree + n_received_surface_problem_agree, 0) AS n_received_agree,
-    COALESCE(n_received_curb_ramp_disagree + n_received_missing_curb_ramp_disagree + n_received_obstacle_disagree + n_received_surface_problem_disagree, 0) AS n_received_disagree,
-    COALESCE(n_received_curb_ramp_unsure + n_received_missing_curb_ramp_unsure + n_received_obstacle_unsure + n_received_surface_problem_unsure, 0) AS n_received_unsure,
-    COALESCE(n_received_curb_ramp_tie + n_received_missing_curb_ramp_tie + n_received_obstacle_tie + n_received_surface_problem_tie, 0) AS n_received_tie,
-    COALESCE(n_received_curb_ramp_agree + n_received_curb_ramp_disagree + n_received_curb_ramp_unsure + n_received_curb_ramp_tie, 0) AS n_received_curb_ramp,
-    COALESCE(n_received_curb_ramp_agree, 0) AS n_received_curb_ramp_agree,
-    COALESCE(n_received_curb_ramp_disagree, 0) AS n_received_curb_ramp_disagree,
-    COALESCE(n_received_curb_ramp_unsure, 0) AS n_received_curb_ramp_unsure,
-    COALESCE(n_received_curb_ramp_tie, 0) AS n_received_curb_ramp_tie,
-    COALESCE(n_received_missing_curb_ramp_agree + n_received_missing_curb_ramp_disagree + n_received_missing_curb_ramp_unsure + n_received_missing_curb_ramp_tie, 0) AS n_received_missing_curb_ramp,
-    COALESCE(n_received_missing_curb_ramp_agree, 0) AS n_received_missing_curb_ramp_agree,
-    COALESCE(n_received_missing_curb_ramp_disagree, 0) AS n_received_missing_curb_ramp_disagree,
-    COALESCE(n_received_missing_curb_ramp_unsure, 0) AS n_received_missing_curb_ramp_unsure,
-    COALESCE(n_received_missing_curb_ramp_tie, 0) AS n_received_missing_curb_ramp_tie,
-    COALESCE(n_received_obstacle_agree + n_received_obstacle_disagree + n_received_obstacle_unsure + n_received_obstacle_tie, 0) AS n_received_obstacle,
-    COALESCE(n_received_obstacle_agree, 0) AS n_received_obstacle_agree,
-    COALESCE(n_received_obstacle_disagree, 0) AS n_received_obstacle_disagree,
-    COALESCE(n_received_obstacle_unsure, 0) AS n_received_obstacle_unsure,
-    COALESCE(n_received_obstacle_tie, 0) AS n_received_obstacle_tie,
-    COALESCE(n_received_surface_problem_agree + n_received_surface_problem_disagree + n_received_surface_problem_unsure + n_received_surface_problem_tie, 0) AS n_received_surface_problem,
-    COALESCE(n_received_surface_problem_agree, 0) AS n_received_surface_problem_agree,
-    COALESCE(n_received_surface_problem_disagree, 0) AS n_received_surface_problem_disagree,
-    COALESCE(n_received_surface_problem_unsure, 0) AS n_received_surface_problem_unsure,
-    COALESCE(n_received_surface_problem_tie, 0) AS n_received_surface_problem_tie,
+    n_validation_received,
+    n_received_curb_ramp_agree + n_received_missing_curb_ramp_agree + n_received_obstacle_agree + n_received_surface_problem_agree AS n_received_agree,
+    n_received_curb_ramp_disagree + n_received_missing_curb_ramp_disagree + n_received_obstacle_disagree + n_received_surface_problem_disagree AS n_received_disagree,
+    n_received_curb_ramp_unsure + n_received_missing_curb_ramp_unsure + n_received_obstacle_unsure + n_received_surface_problem_unsure AS n_received_unsure,
+    n_received_curb_ramp_tie + n_received_missing_curb_ramp_tie + n_received_obstacle_tie + n_received_surface_problem_tie AS n_received_tie,
+    n_received_curb_ramp_agree + n_received_curb_ramp_disagree + n_received_curb_ramp_unsure + n_received_curb_ramp_tie AS n_received_curb_ramp,
+    n_received_curb_ramp_agree,
+    n_received_curb_ramp_disagree,
+    n_received_curb_ramp_unsure,
+    n_received_curb_ramp_tie,
+    n_received_missing_curb_ramp_agree + n_received_missing_curb_ramp_disagree + n_received_missing_curb_ramp_unsure + n_received_missing_curb_ramp_tie AS n_received_missing_curb_ramp,
+    n_received_missing_curb_ramp_agree,
+    n_received_missing_curb_ramp_disagree,
+    n_received_missing_curb_ramp_unsure,
+    n_received_missing_curb_ramp_tie,
+    n_received_obstacle_agree + n_received_obstacle_disagree + n_received_obstacle_unsure + n_received_obstacle_tie AS n_received_obstacle,
+    n_received_obstacle_agree,
+    n_received_obstacle_disagree,
+    n_received_obstacle_unsure,
+    n_received_obstacle_tie,
+    n_received_surface_problem_agree + n_received_surface_problem_disagree + n_received_surface_problem_unsure + n_received_surface_problem_tie AS n_received_surface_problem,
+    n_received_surface_problem_agree,
+    n_received_surface_problem_disagree,
+    n_received_surface_problem_unsure,
+    n_received_surface_problem_tie,
     COALESCE(n_validation_given, 0) AS n_validation_given,
     COALESCE(n_given_curb_ramp_agree + n_given_missing_curb_ramp_agree + n_given_obstacle_agree + n_given_surface_problem_agree, 0) AS n_given_agree,
     COALESCE(n_given_curb_ramp_disagree + n_given_missing_curb_ramp_disagree + n_given_obstacle_disagree + n_given_surface_problem_disagree, 0) AS n_given_disagree,
@@ -118,46 +118,6 @@ FROM (
 INNER JOIN user_role ON users.user_id = user_role.user_id
 INNER JOIN role ON user_role.role_id = role.role_id
 INNER JOIN user_stat ON users.user_id = user_stat.user_id
--- Validations received.
-LEFT JOIN (
-    SELECT mission.user_id,
-        COUNT(label.label_id) AS n_validation_received,
-        COUNT(CASE WHEN validation_result = 1 AND label.label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_agree,
-        COUNT(CASE WHEN validation_result = 2 AND label.label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_disagree,
-        COUNT(CASE WHEN validation_result = 3 AND label.label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_unsure,
-        COUNT(CASE WHEN validation_result = 4 AND label.label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_tie,
-        COUNT(CASE WHEN validation_result = 1 AND label.label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_agree,
-        COUNT(CASE WHEN validation_result = 2 AND label.label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_disagree,
-        COUNT(CASE WHEN validation_result = 3 AND label.label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_unsure,
-        COUNT(CASE WHEN validation_result = 4 AND label.label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_tie,
-        COUNT(CASE WHEN validation_result = 1 AND label.label_type_id = 3 THEN 1 END) AS n_received_obstacle_agree,
-        COUNT(CASE WHEN validation_result = 2 AND label.label_type_id = 3 THEN 1 END) AS n_received_obstacle_disagree,
-        COUNT(CASE WHEN validation_result = 3 AND label.label_type_id = 3 THEN 1 END) AS n_received_obstacle_unsure,
-        COUNT(CASE WHEN validation_result = 4 AND label.label_type_id = 3 THEN 1 END) AS n_received_obstacle_tie,
-        COUNT(CASE WHEN validation_result = 1 AND label.label_type_id = 4 THEN 1 END) AS n_received_surface_problem_agree,
-        COUNT(CASE WHEN validation_result = 2 AND label.label_type_id = 4 THEN 1 END) AS n_received_surface_problem_disagree,
-        COUNT(CASE WHEN validation_result = 3 AND label.label_type_id = 4 THEN 1 END) AS n_received_surface_problem_unsure,
-        COUNT(CASE WHEN validation_result = 4 AND label.label_type_id = 4 THEN 1 END) AS n_received_surface_problem_tie
-    FROM (
-        SELECT label_id,
-            CASE WHEN n_agree > n_disagree AND n_agree > n_unsure THEN 1
-                WHEN n_disagree > n_agree AND n_disagree > n_unsure THEN 2
-                WHEN n_unsure > n_agree AND n_unsure > n_disagree THEN 3
-                ELSE 4 END AS validation_result -- validation result of a 4 means a tie between any categories
-        FROM (
-            SELECT label_id,
-                COUNT(CASE WHEN validation_result = 1 THEN label_id END) AS n_agree,
-                COUNT(CASE WHEN validation_result = 2 THEN label_id END) AS n_disagree,
-                COUNT(CASE WHEN validation_result = 3 THEN label_id END) AS n_unsure
-            FROM label_validation
-            GROUP BY label_id
-        ) labs
-    ) validations
-    INNER JOIN label ON validations.label_id = label.label_id
-    INNER JOIN mission ON label.mission_id = mission.mission_id
-    WHERE label.label_type_id < 5 -- only include 4 main label types
-    GROUP BY mission.user_id
-) validations_received ON users.user_id = validations_received.user_id
 -- Validations given
 LEFT JOIN (
     SELECT mission.user_id,
@@ -203,7 +163,7 @@ INNER JOIN (
     WHERE mission_type_id = 2
     GROUP BY user_id
 ) audited_distance ON users.user_id = audited_distance.user_id
--- Label counts w/ and w/out severity, tags, and descriptions
+-- Label counts w/ and w/out severity, tags, and descriptions. Plus received validation counts.
 INNER JOIN (
     SELECT user_id,
         COUNT(label_id) AS n_label,
@@ -253,9 +213,39 @@ INNER JOIN (
         min(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_min,
         max(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_max,
         avg(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_mean,
-        stddev(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_sd
+        stddev(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_sd,
+        COUNT(CASE WHEN label_type_id < 5 AND agree_count + disagree_count + notsure_count > 0 THEN 1 END) AS n_validation_received, -- only include 4 main label types
+        COUNT(CASE WHEN validation_result = 1 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_agree,
+        COUNT(CASE WHEN validation_result = 2 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_disagree,
+        COUNT(CASE WHEN validation_result = 3 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_unsure,
+        COUNT(CASE WHEN validation_result = 4 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_tie,
+        COUNT(CASE WHEN validation_result = 1 AND label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_agree,
+        COUNT(CASE WHEN validation_result = 2 AND label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_disagree,
+        COUNT(CASE WHEN validation_result = 3 AND label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_unsure,
+        COUNT(CASE WHEN validation_result = 4 AND label_type_id = 2 THEN 1 END) AS n_received_missing_curb_ramp_tie,
+        COUNT(CASE WHEN validation_result = 1 AND label_type_id = 3 THEN 1 END) AS n_received_obstacle_agree,
+        COUNT(CASE WHEN validation_result = 2 AND label_type_id = 3 THEN 1 END) AS n_received_obstacle_disagree,
+        COUNT(CASE WHEN validation_result = 3 AND label_type_id = 3 THEN 1 END) AS n_received_obstacle_unsure,
+        COUNT(CASE WHEN validation_result = 4 AND label_type_id = 3 THEN 1 END) AS n_received_obstacle_tie,
+        COUNT(CASE WHEN validation_result = 1 AND label_type_id = 4 THEN 1 END) AS n_received_surface_problem_agree,
+        COUNT(CASE WHEN validation_result = 2 AND label_type_id = 4 THEN 1 END) AS n_received_surface_problem_disagree,
+        COUNT(CASE WHEN validation_result = 3 AND label_type_id = 4 THEN 1 END) AS n_received_surface_problem_unsure,
+        COUNT(CASE WHEN validation_result = 4 AND label_type_id = 4 THEN 1 END) AS n_received_surface_problem_tie
     FROM (
-        SELECT user_id, label.label_id, label.label_type_id, label_severity.label_severity_id, severity, COUNT(label_tag.label_tag_id) AS valid_tags, label_description_id
+        SELECT user_id,
+            label.label_id,
+            label.label_type_id,
+            label_severity.label_severity_id,
+            severity,
+            COUNT(label_tag.label_tag_id) AS valid_tags,
+            label_description_id,
+            agree_count,
+            disagree_count,
+            notsure_count,
+            CASE WHEN agree_count > disagree_count AND agree_count > notsure_count THEN 1
+                WHEN disagree_count > agree_count AND disagree_count > notsure_count THEN 2
+                WHEN notsure_count > agree_count AND notsure_count > disagree_count THEN 3
+                ELSE 4 END AS validation_result
         FROM mission
         INNER JOIN label ON mission.mission_id = label.mission_id
         LEFT JOIN label_severity ON label.label_id = label_severity.label_id
