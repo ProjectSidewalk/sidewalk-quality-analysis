@@ -214,7 +214,7 @@ INNER JOIN (
         max(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_max,
         avg(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_mean,
         stddev(CASE WHEN label_type_id = 7 AND label_severity_id IS NOT NULL THEN severity END) AS no_sidewalk_severity_sd,
-        COUNT(CASE WHEN label_type_id < 5 AND agree_count + disagree_count + notsure_count > 0 THEN 1 END) AS n_validation_received, -- only include 4 main label types
+        COUNT(CASE WHEN label_type_id < 5 AND validation_result IS NOT NULL THEN 1 END) AS n_validation_received, -- only include 4 main label types
         COUNT(CASE WHEN validation_result = 1 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_agree,
         COUNT(CASE WHEN validation_result = 2 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_disagree,
         COUNT(CASE WHEN validation_result = 3 AND label_type_id = 1 THEN 1 END) AS n_received_curb_ramp_unsure,
@@ -239,13 +239,11 @@ INNER JOIN (
             severity,
             COUNT(label_tag.label_tag_id) AS valid_tags,
             label_description_id,
-            agree_count,
-            disagree_count,
-            notsure_count,
             CASE WHEN agree_count > disagree_count AND agree_count > notsure_count THEN 1
                 WHEN disagree_count > agree_count AND disagree_count > notsure_count THEN 2
                 WHEN notsure_count > agree_count AND notsure_count > disagree_count THEN 3
-                ELSE 4 END AS validation_result
+                WHEN agree_count + disagree_count + notsure_count > 0 THEN 4 -- validation result of a 4 means a tie between any categories
+                ELSE NULL END AS validation_result
         FROM mission
         INNER JOIN label ON mission.mission_id = label.mission_id
         LEFT JOIN label_severity ON label.label_id = label_severity.label_id
