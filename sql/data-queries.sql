@@ -1,5 +1,6 @@
--- The big query with most of the data! Output as ml-<city-name>-stats.csv
+-- The big query with most of the data! Output as ml-stats.csv
 SELECT users.user_id,
+    :city AS city, -- city passed in as a parameter
     CASE WHEN role.role = 'Anonymous' THEN 'Anonymous' WHEN role.role = 'Registered' THEN 'Registered' WHEN role.role = 'Turker' THEN 'Turker' ELSE 'Researcher' END AS role,
     n_validation_received,
     n_received_curb_ramp_agree + n_received_missing_curb_ramp_agree + n_received_obstacle_agree + n_received_surface_problem_agree AS n_received_agree,
@@ -322,8 +323,9 @@ LEFT JOIN (
 ORDER BY users.user_id;
 
 
--- INTERACTIONS QUERY -- output as ml-<city-name>-interaction-stats.csv
+-- INTERACTIONS QUERY -- output as ml-interaction-stats.csv
 SELECT users.user_id,
+    :city AS city, -- city passed in as a parameter
     COALESCE(n_pano_visited, 0) AS n_pano_visited,
     COALESCE(n_pano_with_label, 0) AS n_pano_with_label,
     COALESCE(n_keyboard_interaction, 0) AS n_keyboard_interaction,
@@ -398,6 +400,7 @@ LEFT JOIN (
 
 -- INTERACTIONS QUERY THAT TAKES TOO LONG TO RUN
 SELECT users.user_id,
+    :city AS city, -- city passed in as a parameter
     panos_visited,
     --mousemove_per_pano_min,
     --mousemove_per_pano_max,
@@ -469,8 +472,8 @@ INNER JOIN (
 ) interaction_stats ON users.user_id = interaction_stats.user_id
 
 
--- USERS QUERY -- output as ml-<city-name>-users.csv
-SELECT users_with_stats.user_id, username, email
+-- USERS QUERY -- output as ml-users.csv
+SELECT users_with_stats.user_id, :city AS city, username, email
 FROM (
     SELECT mission.user_id, COUNT(DISTINCT(label.label_id)) AS label_count, SUM(distance_progress) AS total_dist
     FROM mission
