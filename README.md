@@ -1,5 +1,5 @@
 # sidewalk-quality-analysis
-In this project, we aim to infer the quality of Project Sidewalk users based on their interactions with our system--both low-level interactions like mouse clicks and moves--as well as higher-level, more application related interactions (amount of panning on a street view image, etc.). More details are in our Dropbox folder [`ProjectSidewalk_PredictingUserQuality`](https://www.dropbox.com/home/ProjectSidewalk_PredictingUserQuality)
+In this project, we aim to infer the quality of Project Sidewalk users based on their interactions with our system—both low-level interactions like mouse clicks and moves—as well as higher-level, more application related interactions (amount of panning on a street view image, etc.). More details are in our Dropbox folder [`ProjectSidewalk_PredictingUserQuality`](https://www.dropbox.com/home/ProjectSidewalk_PredictingUserQuality)
 
 ## Running the notebook locally using Anaconda 
 
