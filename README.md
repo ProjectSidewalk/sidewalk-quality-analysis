@@ -37,7 +37,7 @@ done
 #     $ conda deactivate
 ```
 
-Optionally, if you'd like to list the active conda environments on your system and verify that the `a11y-qual-analysis` environment was created:
+Optionally, if you'd like to list the active conda environments on your system and verify that the `sidewalk-quality-analysis` environment was created:
 
 ```
 > conda env list
@@ -59,8 +59,8 @@ Now you should see the command line prompt prefixed by the current environment: 
 Now you can type in `jupyter notebook` and find `analysis.ipynb`. 
 
 ```
-(a11y-qual-analysis)$ jupyter notebook
+(sidewalk-quality-analysis)$ jupyter notebook
 ```
 
-In Jupyter Notebook environment, navigate to the `analysis.ipynb.ipynb` file and open it.
+In Jupyter Notebook environment, navigate to the `analysis.ipynb` file and open it.
 
